@@ -1,12 +1,10 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <!-- Head部分不变 -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ site_title }}</title>
     <style>
-        /* 其它所有CSS规则保持完全不变 */
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; color: #e0e0e0; margin: 0; padding: 20px; background-color: #0d1117; background-image: radial-gradient(ellipse at bottom, #1b2735 0%, #0d1117 100%); overflow-x: hidden; min-height: 100vh; }
         .sky-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; overflow: hidden; }
         .star { position: absolute; background-color: white; border-radius: 50%; animation: twinkle linear infinite; }
@@ -16,8 +14,6 @@
         h1 { font-size: 2.5em; color: #ffffff; margin-bottom: 0; }
         h2 { font-size: 1.2em; color: #a0a0a0; font-weight: normal; margin-top: 5px; font-style: italic; }
         .update-time { font-size: 0.9em; color: #888; text-align: center; margin-bottom: 30px; }
-
-        /* --- [最终修正] 严格5列的居中换行布局 --- */
         .tab-buttons {
             display: flex;
             justify-content: center;
@@ -26,13 +22,10 @@
             margin-bottom: 20px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
             padding-bottom: 20px;
-            
-            /* 核心修正：给容器本身一个最大宽度，并让它居中 */
-            max-width: 720px; /* 一个足以容纳5个按钮+间距的宽度 */
+            max-width: 720px; 
             margin-left: auto;
             margin-right: auto;
         }
-        
         .tab-buttons button {
             background: none; border: none; border-bottom: 3px solid transparent;
             color: #aaa; padding: 10px 15px;
@@ -40,11 +33,8 @@
             font-size: 1em; cursor: pointer; transition: all 0.3s ease-in-out;
             text-align: center;
         }
-
         .tab-buttons button:hover { color: #fff; }
         .tab-buttons button.active { color: #bb86fc; border-bottom-color: #bb86fc; font-weight: bold; }
-
-        /* --- 以下所有规则保持不变 --- */
         .tab-panel { display: none; }
         .tab-panel.active { display: block; }
         .card { border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; margin-bottom: 20px; padding: 20px; display: flex; align-items: flex-start; background: rgba(40, 45, 60, 0.4); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); box-shadow: inset 0 0 1px 1px rgba(255, 255, 255, 0.05); transition: transform 0.3s ease-out, box-shadow 0.3s ease-out; }
@@ -72,7 +62,6 @@
 <body>
     <div class="sky-container" id="sky-container"></div>
     <div class="container">
-        <!-- HTML结构完全不变 -->
         <header><h1>🌙 {{ site_title }}</h1><h2>{{ site_slogan }}</h2></header>
         <p class="update-time">最后更新于: {{ update_time }} (北京时间)</p>
         {% if grouped_entries %}
@@ -82,7 +71,9 @@
                 <div id="tab-{{ loop.index }}" class="tab-panel">
                     {% for entry in entries %}
                     <div class="card">
-                        {% if entry.thumbnail %}<div class="card-thumbnail"><a href="{{ entry.link }}" target="_blank" rel="noopener noreferrer"><img src="{{ entry.thumbnail }}" alt="Thumbnail"></a></div>{% endif %}
+                        <!-- ▼▼▼ 唯一的修改在这里 ▼▼▼ -->
+                        {% if entry.thumbnail %}<div class="card-thumbnail"><a href="{{ entry.link }}" target="_blank" rel="noopener noreferrer"><img src="{{ entry.thumbnail }}" alt="Thumbnail" referrerpolicy="no-referrer"></a></div>{% endif %}
+                        <!-- ▲▲▲ 唯一的修改在这里 ▲▲▲ -->
                         <div class="card-content">
                             <div class="card-title"><a href="{{ entry.link }}" target="_blank" rel="noopener noreferrer">{{ entry.title }}</a></div>
                             <div class="card-meta"><span>{{ entry.author or '未知作者' }}</span> • <span>{{ entry.published.strftime('%Y-%m-%d %H:%M') if entry.published else '未知时间' }}</span></div>
@@ -101,7 +92,6 @@
     </div>
     
     <script>
-        // JS部分完全不需要改动
         document.addEventListener('DOMContentLoaded', function() {
             const skyContainer = document.getElementById('sky-container');
             const screenArea = window.innerWidth * window.innerHeight;
