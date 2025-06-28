@@ -1,0 +1,9 @@
+# Python
+__pycache__/
+*.pyc
+
+# VS Code
+.vscode/
+
+# 生成的网页（我们希望每次都重新生成）
+index.html

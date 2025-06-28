@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <!-- Head部分不变 -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ site_title }}</title>
+    <style>
+        /* 其它所有CSS规则保持完全不变 */
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; color: #e0e0e0; margin: 0; padding: 20px; background-color: #0d1117; background-image: radial-gradient(ellipse at bottom, #1b2735 0%, #0d1117 100%); overflow-x: hidden; min-height: 100vh; }
+        .sky-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; overflow: hidden; }
+        .star { position: absolute; background-color: white; border-radius: 50%; animation: twinkle linear infinite; }
+        @keyframes twinkle { 0%, 100% { opacity: 0.2; } 50% { opacity: 0.8; } }
+        .container { max-width: 800px; margin: 0 auto; position: relative; z-index: 1; }
+        header { text-align: center; margin-bottom: 20px; padding-bottom: 20px; }
+        h1 { font-size: 2.5em; color: #ffffff; margin-bottom: 0; }
+        h2 { font-size: 1.2em; color: #a0a0a0; font-weight: normal; margin-top: 5px; font-style: italic; }
+        .update-time { font-size: 0.9em; color: #888; text-align: center; margin-bottom: 30px; }
+
+        /* --- [最终修正] 严格5列的居中换行布局 --- */
+        .tab-buttons {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 10px 15px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 20px;
+            
+            /* 核心修正：给容器本身一个最大宽度，并让它居中 */
+            max-width: 720px; /* 一个足以容纳5个按钮+间距的宽度 */
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .tab-buttons button {
+            background: none; border: none; border-bottom: 3px solid transparent;
+            color: #aaa; padding: 10px 15px;
+            margin: 0;
+            font-size: 1em; cursor: pointer; transition: all 0.3s ease-in-out;
+            text-align: center;
+        }
+
+        .tab-buttons button:hover { color: #fff; }
+        .tab-buttons button.active { color: #bb86fc; border-bottom-color: #bb86fc; font-weight: bold; }
+
+        /* --- 以下所有规则保持不变 --- */
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+        .card { border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; margin-bottom: 20px; padding: 20px; display: flex; align-items: flex-start; background: rgba(40, 45, 60, 0.4); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); box-shadow: inset 0 0 1px 1px rgba(255, 255, 255, 0.05); transition: transform 0.3s ease-out, box-shadow 0.3s ease-out; }
+        .card:hover { transform: translateY(-4px); box-shadow: inset 0 0 1px 1px rgba(255, 255, 255, 0.05), 0 0 30px rgba(187, 134, 252, 0.3); }
+        .card-thumbnail { margin-right: 20px; flex-shrink: 0; }
+        .card-thumbnail img { width: 120px; height: 90px; object-fit: cover; border-radius: 8px; background-color: #333; }
+        .card-content { flex-grow: 1; min-width: 0; }
+        .card-title a { color: #bb86fc; text-decoration: none; font-size: 1.2em; font-weight: bold; }
+        .card-title a:hover { text-decoration: underline; color: #d0a3ff; }
+        .card-meta, .card-extra-meta { font-size: 0.9em; color: #aaa; margin-top: 8px; }
+        .card-summary { margin-top: 10px; font-size: 1em; color: #ccc; line-height: 1.5; }
+        .meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px 15px; margin-top: 12px; font-size: 0.9em; color: #aaa; border-top: 1px solid rgba(255, 255, 255, 0.1); padding-top: 12px; }
+        .meta-item > span:first-child { color: #888; margin-right: 5px; }
+        .category-tag { background-color: rgba(58, 58, 58, 0.8); color: #e0e0e0; padding: 2px 8px; border-radius: 10px; font-size: 0.8em; margin-right: 5px; white-space: nowrap; }
+        @media (max-width: 768px) {
+            body { padding: 15px; }
+            h1 { font-size: 2em; }
+            h2 { font-size: 1em; }
+            .card { flex-direction: column; }
+            .card-thumbnail { margin-right: 0; margin-bottom: 15px; width: 100%; }
+            .card-thumbnail img { width: 100%; height: auto; aspect-ratio: 16 / 9; }
+        }
+    </style>
+</head>
+<body>
+    <div class="sky-container" id="sky-container"></div>
+    <div class="container">
+        <!-- HTML结构完全不变 -->
+        <header><h1>🌙 {{ site_title }}</h1><h2>{{ site_slogan }}</h2></header>
+        <p class="update-time">最后更新于: {{ update_time }} (北京时间)</p>
+        {% if grouped_entries %}
+            <div class="tab-buttons">{% for source in grouped_entries %}<button class="tab-button" data-target="#tab-{{ loop.index }}">{{ source }}</button>{% endfor %}</div>
+            <div class="tab-content">
+                {% for source, entries in grouped_entries.items() %}
+                <div id="tab-{{ loop.index }}" class="tab-panel">
+                    {% for entry in entries %}
+                    <div class="card">
+                        {% if entry.thumbnail %}<div class="card-thumbnail"><a href="{{ entry.link }}" target="_blank" rel="noopener noreferrer"><img src="{{ entry.thumbnail }}" alt="Thumbnail"></a></div>{% endif %}
+                        <div class="card-content">
+                            <div class="card-title"><a href="{{ entry.link }}" target="_blank" rel="noopener noreferrer">{{ entry.title }}</a></div>
+                            <div class="card-meta"><span>{{ entry.author or '未知作者' }}</span> • <span>{{ entry.published.strftime('%Y-%m-%d %H:%M') if entry.published else '未知时间' }}</span></div>
+                            {% if entry.summary %}<div class="card-summary">{{ entry.summary | striptags | safe }}</div>{% endif %}
+                            {% if entry.bilibili_meta %}<div class="meta-grid"><div class="meta-item"><span>时长:</span>{{ entry.bilibili_meta.length }}</div><div class="meta-item"><span>播放:</span>{{ entry.bilibili_meta.play }}</div><div class="meta-item"><span>收藏:</span>{{ entry.bilibili_meta.favorite }}</div><div class="meta-item"><span>弹幕:</span>{{ entry.bilibili_meta.danmaku }}</div><div class="meta-item"><span>评论:</span>{{ entry.bilibili_meta.comment }}</div></div>{% if entry.categories %}<div class="card-extra-meta">{% for cat in entry.categories %}<span class="category-tag">{{ cat }}</span>{% endfor %}</div>{% endif %}{% endif %}
+                            {% if entry.ao3_meta %}<div class="meta-grid"><div class="meta-item"><span>字数:</span>{{ entry.ao3_meta.words }}</div><div class="meta-item"><span>章节:</span>{{ entry.ao3_meta.chapters }}</div><div class="meta-item"><span>分级:</span>{{ entry.ao3_meta.rating }}</div><div class="meta-item"><span>警告:</span>{{ entry.ao3_meta.warnings }}</div></div>{% if entry.ao3_meta.relationships %}<div class="card-extra-meta">{% for rel in entry.ao3_meta.relationships %}<span class="category-tag">{{ rel }}</span>{% endfor %}</div>{% endif %}{% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="card" style="justify-content: center;">暂时没有抓取到任何内容，观测站正在努力工作中...</div>
+        {% endif %}
+    </div>
+    
+    <script>
+        // JS部分完全不需要改动
+        document.addEventListener('DOMContentLoaded', function() {
+            const skyContainer = document.getElementById('sky-container');
+            const screenArea = window.innerWidth * window.innerHeight;
+            const starCount = Math.floor(screenArea / 12000);
+            for (let i = 0; i < starCount; i++) {
+                const star = document.createElement('div');
+                star.className = 'star';
+                const size = Math.random() * 2 + 0.5;
+                star.style.width = `${size}px`;
+                star.style.height = `${size}px`;
+                star.style.top = `${Math.random() * 100}%`;
+                star.style.left = `${Math.random() * 100}%`;
+                star.style.animationDuration = `${Math.random() * 4 + 3}s`;
+                star.style.animationDelay = `${Math.random() * 5}s`;
+                skyContainer.appendChild(star);
+            }
+            const tabButtons = document.querySelectorAll('.tab-button');
+            const tabPanels = document.querySelectorAll('.tab-panel');
+            if (tabButtons.length > 0) {
+                tabButtons[0].classList.add('active');
+                if(tabPanels.length > 0) tabPanels[0].classList.add('active');
+            }
+            tabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    tabButtons.forEach(btn => btn.classList.remove('active'));
+                    tabPanels.forEach(panel => panel.classList.remove('active'));
+                    button.classList.add('active');
+                    const targetPanel = document.querySelector(button.dataset.target);
+                    if (targetPanel) {
+                        targetPanel.classList.add('active');
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
