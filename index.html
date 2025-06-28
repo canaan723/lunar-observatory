@@ -1,0 +1,1050 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <!-- Head部分不变 -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lunar Orbit Observatory</title>
+    <style>
+        /* 其它所有CSS规则保持完全不变 */
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; color: #e0e0e0; margin: 0; padding: 20px; background-color: #0d1117; background-image: radial-gradient(ellipse at bottom, #1b2735 0%, #0d1117 100%); overflow-x: hidden; min-height: 100vh; }
+        .sky-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; overflow: hidden; }
+        .star { position: absolute; background-color: white; border-radius: 50%; animation: twinkle linear infinite; }
+        @keyframes twinkle { 0%, 100% { opacity: 0.2; } 50% { opacity: 0.8; } }
+        .container { max-width: 800px; margin: 0 auto; position: relative; z-index: 1; }
+        header { text-align: center; margin-bottom: 20px; padding-bottom: 20px; }
+        h1 { font-size: 2.5em; color: #ffffff; margin-bottom: 0; }
+        h2 { font-size: 1.2em; color: #a0a0a0; font-weight: normal; margin-top: 5px; font-style: italic; }
+        .update-time { font-size: 0.9em; color: #888; text-align: center; margin-bottom: 30px; }
+
+        /* --- [最终修正] 严格5列的居中换行布局 --- */
+        .tab-buttons {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 10px 15px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 20px;
+            
+            /* 核心修正：给容器本身一个最大宽度，并让它居中 */
+            max-width: 720px; /* 一个足以容纳5个按钮+间距的宽度 */
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .tab-buttons button {
+            background: none; border: none; border-bottom: 3px solid transparent;
+            color: #aaa; padding: 10px 15px;
+            margin: 0;
+            font-size: 1em; cursor: pointer; transition: all 0.3s ease-in-out;
+            text-align: center;
+        }
+
+        .tab-buttons button:hover { color: #fff; }
+        .tab-buttons button.active { color: #bb86fc; border-bottom-color: #bb86fc; font-weight: bold; }
+
+        /* --- 以下所有规则保持不变 --- */
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+        .card { border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; margin-bottom: 20px; padding: 20px; display: flex; align-items: flex-start; background: rgba(40, 45, 60, 0.4); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); box-shadow: inset 0 0 1px 1px rgba(255, 255, 255, 0.05); transition: transform 0.3s ease-out, box-shadow 0.3s ease-out; }
+        .card:hover { transform: translateY(-4px); box-shadow: inset 0 0 1px 1px rgba(255, 255, 255, 0.05), 0 0 30px rgba(187, 134, 252, 0.3); }
+        .card-thumbnail { margin-right: 20px; flex-shrink: 0; }
+        .card-thumbnail img { width: 120px; height: 90px; object-fit: cover; border-radius: 8px; background-color: #333; }
+        .card-content { flex-grow: 1; min-width: 0; }
+        .card-title a { color: #bb86fc; text-decoration: none; font-size: 1.2em; font-weight: bold; }
+        .card-title a:hover { text-decoration: underline; color: #d0a3ff; }
+        .card-meta, .card-extra-meta { font-size: 0.9em; color: #aaa; margin-top: 8px; }
+        .card-summary { margin-top: 10px; font-size: 1em; color: #ccc; line-height: 1.5; }
+        .meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px 15px; margin-top: 12px; font-size: 0.9em; color: #aaa; border-top: 1px solid rgba(255, 255, 255, 0.1); padding-top: 12px; }
+        .meta-item > span:first-child { color: #888; margin-right: 5px; }
+        .category-tag { background-color: rgba(58, 58, 58, 0.8); color: #e0e0e0; padding: 2px 8px; border-radius: 10px; font-size: 0.8em; margin-right: 5px; white-space: nowrap; }
+        @media (max-width: 768px) {
+            body { padding: 15px; }
+            h1 { font-size: 2em; }
+            h2 { font-size: 1em; }
+            .card { flex-direction: column; }
+            .card-thumbnail { margin-right: 0; margin-bottom: 15px; width: 100%; }
+            .card-thumbnail img { width: 100%; height: auto; aspect-ratio: 16 / 9; }
+        }
+    </style>
+</head>
+<body>
+    <div class="sky-container" id="sky-container"></div>
+    <div class="container">
+        <!-- HTML结构完全不变 -->
+        <header><h1>🌙 Lunar Orbit Observatory</h1><h2>Tracing the Path of the Moon.</h2></header>
+        <p class="update-time">最后更新于: 2025-06-28 18:17:40 (北京时间)</p>
+        
+            <div class="tab-buttons"><button class="tab-button" data-target="#tab-1">AO3 | 佐鸣佐</button><button class="tab-button" data-target="#tab-2">B站 | 佐助</button><button class="tab-button" data-target="#tab-3">B站 | 佐鸣</button><button class="tab-button" data-target="#tab-4">B站 | 鸣佐</button><button class="tab-button" data-target="#tab-5">微博超话 | 佐鸣</button><button class="tab-button" data-target="#tab-6">微博超话 | 鸣佐</button></div>
+            <div class="tab-content">
+                
+                <div id="tab-1" class="tab-panel">
+                    
+                    <div class="card">
+                        
+                        <div class="card-content">
+                            <div class="card-title"><a href="https://archiveofourown.org/works/66930145" target="_blank" rel="noopener noreferrer">【鸣佐+卡伊】夏日篇章</a></div>
+                            <div class="card-meta"><span>Franzzl0618</span> • <span>2025-06-27 09:16</span></div>
+                            <div class="card-summary">灵感来源bl日剧《只想看着你》 现代校园au总的来说是非常适合在夏天阅读的轻松愉快纯爱短篇论鸣佐的全垒打之路</div>
+                            
+                            <div class="meta-grid"><div class="meta-item"><span>字数:</span>7865,</div><div class="meta-item"><span>章节:</span>1/1</div><div class="meta-item"><span>分级:</span>未分级</div><div class="meta-item"><span>警告:</span>作者选择不使用作品存档警告</div></div>
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        
+                        <div class="card-content">
+                            <div class="card-title"><a href="https://archiveofourown.org/works/66916603" target="_blank" rel="noopener noreferrer">兔子不是食草动物吗？</a></div>
+                            <div class="card-meta"><span>Astesia_yuri</span> • <span>2025-06-26 23:15</span></div>
+                            <div class="card-summary">鸣人捡了一只兔子</div>
+                            
+                            <div class="meta-grid"><div class="meta-item"><span>字数:</span>1616,</div><div class="meta-item"><span>章节:</span>1/1</div><div class="meta-item"><span>分级:</span>未分级</div><div class="meta-item"><span>警告:</span>作者选择不使用作品存档警告</div></div>
+                        </div>
+                    </div>
+                    
+                </div>
+                
+                <div id="tab-2" class="tab-panel">
+                    
+                    <div class="card">
+                        <div class="card-thumbnail"><a href="http://www.bilibili.com/video/av114758875355389" target="_blank" rel="noopener noreferrer"><img src="http://i1.hdslb.com/bfs/archive/a7f475f34c11a8d61c5a5a73ee923e62ea49f8ac.jpg" alt="Thumbnail"></a></div>
+                        <div class="card-content">
+                            <div class="card-title"><a href="http://www.bilibili.com/video/av114758875355389" target="_blank" rel="noopener noreferrer">盘点五大村历届五影中的最强者，都有哪几代火影掉出最强</a></div>
+                            <div class="card-meta"><span>柒捌动漫社</span> • <span>2025-06-28 17:50</span></div>
+                            
+                            <div class="meta-grid"><div class="meta-item"><span>时长:</span>09:22</div><div class="meta-item"><span>播放:</span>0</div><div class="meta-item"><span>收藏:</span>0</div><div class="meta-item"><span>弹幕:</span>0</div><div class="meta-item"><span>评论:</span>0</div></div><div class="card-extra-meta"><span class="category-tag">火影忍者</span><span class="category-tag">佐助</span><span class="category-tag">鸣人</span><span class="category-tag">动画综合</span></div>
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-thumbnail"><a href="http://www.bilibili.com/video/av114758875356664" target="_blank" rel="noopener noreferrer"><img src="http://i2.hdslb.com/bfs/archive/ecaf3bbba3e6ee767823719f03e34cf62a4dcd03.jpg" alt="Thumbnail"></a></div>
+                        <div class="card-content">
+                            <div class="card-title"><a href="http://www.bilibili.com/video/av114758875356664" target="_blank" rel="noopener noreferrer">盘点第4次忍界大战木叶12小强除鸣佐之外的战绩，有人控制带土2次</a></div>
+                            <div class="card-meta"><span>柒捌动漫社</span> • <span>2025-06-28 17:45</span></div>
+                            
+                            <div class="meta-grid"><div class="meta-item"><span>时长:</span>14:44</div><div class="meta-item"><span>播放:</span>0</div><div class="meta-item"><span>收藏:</span>0</div><div class="meta-item"><span>弹幕:</span>0</div><div class="meta-item"><span>评论:</span>0</div></div><div class="card-extra-meta"><span class="category-tag">宇智波佐助</span><span class="category-tag">宇智波带土</span><span class="category-tag">漩涡鸣人</span><span class="category-tag">动画综合</span></div>
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-thumbnail"><a href="http://www.bilibili.com/video/av114758875355890" target="_blank" rel="noopener noreferrer"><img src="http://i0.hdslb.com/bfs/archive/4be623bd6ce527c3e73c8592dc6ac36eb95d0dc9.jpg" alt="Thumbnail"></a></div>
+                        <div class="card-content">
+                            <div class="card-title"><a href="http://www.bilibili.com/video/av114758875355890" target="_blank" rel="noopener noreferrer">盘点宇智波鼬的9位队友，挂了一半，都成了珍贵的开眼材料</a></div>
+                            <div class="card-meta"><span>柒捌动漫社</span> • <span>2025-06-28 17:40</span></div>
+                            
+                            <div class="meta-grid"><div class="meta-item"><span>时长:</span>12:12</div><div class="meta-item"><span>播放:</span>1</div><div class="meta-item"><span>收藏:</span>0</div><div class="meta-item"><span>弹幕:</span>0</div><div class="meta-item"><span>评论:</span>0</div></div><div class="card-extra-meta"><span class="category-tag">火影忍者</span><span class="category-tag">佐助</span><span class="category-tag">鸣人</span><span class="category-tag">动画综合</span></div>
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-thumbnail"><a href="http://www.bilibili.com/video/av114760301484921" target="_blank" rel="noopener noreferrer"><img src="http://i1.hdslb.com/bfs/archive/06842846d33ba9b11596b89a4677f7cef2093155.jpg" alt="Thumbnail"></a></div>
+                        <div class="card-content">
+                            <div class="card-title"><a href="http://www.bilibili.com/video/av114760301484921" target="_blank" rel="noopener noreferrer">“你离开这一拳给的太重.”</a></div>
+                            <div class="card-meta"><span>-楠白-</span> • <span>2025-06-28 17:36</span></div>
+                            
+                            <div class="meta-grid"><div class="meta-item"><span>时长:</span>00:15</div><div class="meta-item"><span>播放:</span>0</div><div class="meta-item"><span>收藏:</span>0</div><div class="meta-item"><span>弹幕:</span>0</div><div class="meta-item"><span>评论:</span>0</div></div><div class="card-extra-meta"><span class="category-tag">火影忍者</span><span class="category-tag">佐助</span><span class="category-tag">动画综合</span></div>
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-thumbnail"><a href="http://www.bilibili.com/video/av114758875357103" target="_blank" rel="noopener noreferrer"><img src="http://i1.hdslb.com/bfs/archive/7868ac7381573cbe0363017965665c68bbe326f0.jpg" alt="Thumbnail"></a></div>
+                        <div class="card-content">
+                            <div class="card-title"><a href="http://www.bilibili.com/video/av114758875357103" target="_blank" rel="noopener noreferrer">盘点火影中最强的14位辅助型工具忍者，下忍也能辅助成超影</a></div>
+                            <div class="card-meta"><span>柒捌动漫社</span> • <span>2025-06-28 17:35</span></div>
+                            
+                            <div class="meta-grid"><div class="meta-item"><span>时长:</span>08:57</div><div class="meta-item"><span>播放:</span>8</div><div class="meta-item"><span>收藏:</span>0</div><div class="meta-item"><span>弹幕:</span>0</div><div class="meta-item"><span>评论:</span>0</div></div><div class="card-extra-meta"><span class="category-tag">卡卡西</span><span class="category-tag">宇智波佐助</span><span class="category-tag">漩涡鸣人</span><span class="category-tag">动画综合</span></div>
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-thumbnail"><a href="http://www.bilibili.com/video/av114758875357063" target="_blank" rel="noopener noreferrer"><img src="http://i0.hdslb.com/bfs/archive/46db1c3ecd7b67f7b4124ffcce66e78e3a68c81a.jpg" alt="Thumbnail"></a></div>
+                        <div class="card-content">
+                            <div class="card-title"><a href="http://www.bilibili.com/video/av114758875357063" target="_blank" rel="noopener noreferrer">细看普通人长十郎战绩，背靠照美冥的男人有多强</a></div>
+                            <div class="card-meta"><span>柒捌动漫社</span> • <span>2025-06-28 17:30</span></div>
+                            
+                            <div class="meta-grid"><div class="meta-item"><span>时长:</span>08:41</div><div class="meta-item"><span>播放:</span>5</div><div class="meta-item"><span>收藏:</span>0</div><div class="meta-item"><span>弹幕:</span>0</div><div class="meta-item"><span>评论:</span>0</div></div><div class="card-extra-meta"><span class="category-tag">卡卡西</span><span class="category-tag">宇智波佐助</span><span class="category-tag">漩涡鸣人</span><span class="category-tag">动画综合</span></div>
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-thumbnail"><a href="http://www.bilibili.com/video/av114758875356290" target="_blank" rel="noopener noreferrer"><img src="http://i0.hdslb.com/bfs/archive/1d10255340613449486429b0957ce4ae3845c449.jpg" alt="Thumbnail"></a></div>
+                        <div class="card-content">
+                            <div class="card-title"><a href="http://www.bilibili.com/video/av114758875356290" target="_blank" rel="noopener noreferrer">细看玖幸奈一生，那个梦想成为火影的女人，成为了火影的女人</a></div>
+                            <div class="card-meta"><span>柒捌动漫社</span> • <span>2025-06-28 17:25</span></div>
+                            
+                            <div class="meta-grid"><div class="meta-item"><span>时长:</span>15:36</div><div class="meta-item"><span>播放:</span>9</div><div class="meta-item"><span>收藏:</span>0</div><div class="meta-item"><span>弹幕:</span>0</div><div class="meta-item"><span>评论:</span>0</div></div><div class="card-extra-meta"><span class="category-tag">火影忍者</span><span class="category-tag">宇智波佐助</span><span class="category-tag">漩涡鸣人</span><span class="category-tag">动画综合</span></div>
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-thumbnail"><a href="http://www.bilibili.com/video/av114758875356047" target="_blank" rel="noopener noreferrer"><img src="http://i1.hdslb.com/bfs/archive/64b1b4c2e15aac9a7f92ca496b906f2d83af2bdd.jpg" alt="Thumbnail"></a></div>
+                        <div class="card-content">
+                            <div class="card-title"><a href="http://www.bilibili.com/video/av114758875356047" target="_blank" rel="noopener noreferrer">迪达拉vs佐助，如果没属性压制，三勾玉佐助拿什么打赢迪达拉</a></div>
+                            <div class="card-meta"><span>柒捌动漫社</span> • <span>2025-06-28 17:25</span></div>
+                            
+                            <div class="meta-grid"><div class="meta-item"><span>时长:</span>15:01</div><div class="meta-item"><span>播放:</span>10</div><div class="meta-item"><span>收藏:</span>0</div><div class="meta-item"><span>弹幕:</span>0</div><div class="meta-item"><span>评论:</span>0</div></div><div class="card-extra-meta"><span class="category-tag">火影忍者</span><span class="category-tag">佐助</span><span class="category-tag">宇智波佐助</span><span class="category-tag">动画综合</span></div>
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-thumbnail"><a href="http://www.bilibili.com/video/av114760251082943" target="_blank" rel="noopener noreferrer"><img src="http://i0.hdslb.com/bfs/archive/1e86f883ba0622d25a688292692e5e28b987675d.jpg" alt="Thumbnail"></a></div>
+                        <div class="card-content">
+                            <div class="card-title"><a href="http://www.bilibili.com/video/av114760251082943" target="_blank" rel="noopener noreferrer">疾风佐助限时返场？</a></div>
+                            <div class="card-meta"><span>Qsyxl</span> • <span>2025-06-28 17:24</span></div>
+                            
+                            <div class="meta-grid"><div class="meta-item"><span>时长:</span>00:29</div><div class="meta-item"><span>播放:</span>4</div><div class="meta-item"><span>收藏:</span>0</div><div class="meta-item"><span>弹幕:</span>0</div><div class="meta-item"><span>评论:</span>0</div></div><div class="card-extra-meta"><span class="category-tag">火影忍者</span><span class="category-tag">MAD·AMV</span></div>
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-thumbnail"><a href="http://www.bilibili.com/video/av114760200756695" target="_blank" rel="noopener noreferrer"><img src="http://i0.hdslb.com/bfs/archive/b238db8dcd054ff0dcc5cc8e0bef1b78f09ce598.jpg" alt="Thumbnail"></a></div>
+                        <div class="card-content">
+                            <div class="card-title"><a href="http://www.bilibili.com/video/av114760200756695" target="_blank" rel="noopener noreferrer">测试画质</a></div>
+                            <div class="card-meta"><span>人欲便是天道</span> • <span>2025-06-28 17:19</span></div>
+                            
+                            <div class="meta-grid"><div class="meta-item"><span>时长:</span>03:20</div><div class="meta-item"><span>播放:</span>2</div><div class="meta-item"><span>收藏:</span>0</div><div class="meta-item"><span>弹幕:</span>0</div><div class="meta-item"><span>评论:</span>0</div></div><div class="card-extra-meta"><span class="category-tag">演示</span><span class="category-tag">宇智波佐助</span><span class="category-tag">疾风传</span><span class="category-tag">格斗游戏</span><span class="category-tag">宇智波鼬</span><span class="category-tag">须佐能乎</span><span class="category-tag">火影忍者手游</span><span class="category-tag">火影忍者？火影忍者！</span><span class="category-tag">百战鼬</span><span class="category-tag">模玩·周边</span></div>
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-thumbnail"><a href="http://www.bilibili.com/video/av114760200756471" target="_blank" rel="noopener noreferrer"><img src="http://i2.hdslb.com/bfs/archive/e7fc2aae48de62e926b278acc4c81f259bfc7096.jpg" alt="Thumbnail"></a></div>
+                        <div class="card-content">
+                            <div class="card-title"><a href="http://www.bilibili.com/video/av114760200756471" target="_blank" rel="noopener noreferrer">火影忍者 火影中的结印有多少种呢？</a></div>
+                            <div class="card-meta"><span>夏目爱看漫</span> • <span>2025-06-28 17:15</span></div>
+                            
+                            <div class="meta-grid"><div class="meta-item"><span>时长:</span>02:59</div><div class="meta-item"><span>播放:</span>657</div><div class="meta-item"><span>收藏:</span>1</div><div class="meta-item"><span>弹幕:</span>0</div><div class="meta-item"><span>评论:</span>0</div></div><div class="card-extra-meta"><span class="category-tag">火影忍者</span><span class="category-tag">佐助</span><span class="category-tag">鸣人</span><span class="category-tag">结印</span><span class="category-tag">动画综合</span></div>
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-thumbnail"><a href="http://www.bilibili.com/video/av114758875355219" target="_blank" rel="noopener noreferrer"><img src="http://i2.hdslb.com/bfs/archive/1489357a42d63e62f14611425a8284f1eb52889a.jpg" alt="Thumbnail"></a></div>
+                        <div class="card-content">
+                            <div class="card-title"><a href="http://www.bilibili.com/video/av114758875355219" target="_blank" rel="noopener noreferrer">盘点除木叶外的忍界10大强者，其他村都有哪些超影级</a></div>
+                            <div class="card-meta"><span>柒捌动漫社</span> • <span>2025-06-28 17:00</span></div>
+                            
+                            <div class="meta-grid"><div class="meta-item"><span>时长:</span>07:56</div><div class="meta-item"><span>播放:</span>5</div><div class="meta-item"><span>收藏:</span>0</div><div class="meta-item"><span>弹幕:</span>0</div><div class="meta-item"><span>评论:</span>0</div></div><div class="card-extra-meta"><span class="category-tag">宇智波佐助</span><span class="category-tag">宇智波斑</span><span class="category-tag">漩涡鸣人</span><span class="category-tag">动画综合</span></div>
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-thumbnail"><a href="http://www.bilibili.com/video/av114758875421508" target="_blank" rel="noopener noreferrer"><img src="http://i1.hdslb.com/bfs/archive/4c6233356f0e29a83cd562c59b8819179ae5d55b.jpg" alt="Thumbnail"></a></div>
+                        <div class="card-content">
+                            <div class="card-title"><a href="http://www.bilibili.com/video/av114758875421508" target="_blank" rel="noopener noreferrer">鼬只是普通万花筒，为何感觉佐助的永恒万花筒不如他</a></div>
+                            <div class="card-meta"><span>柒捌动漫社</span> • <span>2025-06-28 16:25</span></div>
+                            
+                            <div class="meta-grid"><div class="meta-item"><span>时长:</span>07:52</div><div class="meta-item"><span>播放:</span>41</div><div class="meta-item"><span>收藏:</span>0</div><div class="meta-item"><span>弹幕:</span>0</div><div class="meta-item"><span>评论:</span>0</div></div><div class="card-extra-meta"><span class="category-tag">火影忍者</span><span class="category-tag">宇智波佐助</span><span class="category-tag">宇智波鼬</span><span class="category-tag">动画综合</span></div>
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-thumbnail"><a href="http://www.bilibili.com/video/av114759932385498" target="_blank" rel="noopener noreferrer"><img src="http://i0.hdslb.com/bfs/archive/a283cb3bad0be92e2f3d18d70c332e13cc8ca48a.jpg" alt="Thumbnail"></a></div>
+                        <div class="card-content">
+                            <div class="card-title"><a href="http://www.bilibili.com/video/av114759932385498" target="_blank" rel="noopener noreferrer">真啰嗦，吵死了</a></div>
+                            <div class="card-meta"><span>筱李动漫</span> • <span>2025-06-28 16:11</span></div>
+                            
+                            <div class="meta-grid"><div class="meta-item"><span>时长:</span>00:34</div><div class="meta-item"><span>播放:</span>2</div><div class="meta-item"><span>收藏:</span>0</div><div class="meta-item"><span>弹幕:</span>0</div><div class="meta-item"><span>评论:</span>0</div></div><div class="card-extra-meta"><span class="category-tag">火影忍者</span><span class="category-tag">佐助</span><span class="category-tag">MAD·AMV</span></div>
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-thumbnail"><a href="http://www.bilibili.com/video/av114758875356468" target="_blank" rel="noopener noreferrer"><img src="http://i2.hdslb.com/bfs/archive/3caea073a8dc879b2162ab7498e49be127b26d46.jpg" alt="Thumbnail"></a></div>
+                        <div class="card-content">
+                            <div class="card-title"><a href="http://www.bilibili.com/video/av114758875356468" target="_blank" rel="noopener noreferrer">可以强制吸收对手查克拉的14种能力，佐助的轮回眼为什么不可以</a></div>
+                            <div class="card-meta"><span>柒捌动漫社</span> • <span>2025-06-28 16:10</span></div>
+                            
+                            <div class="meta-grid"><div class="meta-item"><span>时长:</span>08:37</div><div class="meta-item"><span>播放:</span>28</div><div class="meta-item"><span>收藏:</span>0</div><div class="meta-item"><span>弹幕:</span>0</div><div class="meta-item"><span>评论:</span>0</div></div><div class="card-extra-meta"><span class="category-tag">火影忍者</span><span class="category-tag">佐助</span><span class="category-tag">宇智波佐助</span><span class="category-tag">动画综合</span></div>
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-thumbnail"><a href="http://www.bilibili.com/video/av114758875355425" target="_blank" rel="noopener noreferrer"><img src="http://i2.hdslb.com/bfs/archive/a3d6831a5b42384c4a80b4bf3a33f873754f2b60.jpg" alt="Thumbnail"></a></div>
+                        <div class="card-content">
+                            <div class="card-title"><a href="http://www.bilibili.com/video/av114758875355425" target="_blank" rel="noopener noreferrer">卡卡西第四次忍界大战所有战绩，普通万花筒就敢硬拼辉夜的男人</a></div>
+                            <div class="card-meta"><span>柒捌动漫社</span> • <span>2025-06-28 16:00</span></div>
+                            
+                            <div class="meta-grid"><div class="meta-item"><span>时长:</span>16:09</div><div class="meta-item"><span>播放:</span>10</div><div class="meta-item"><span>收藏:</span>0</div><div class="meta-item"><span>弹幕:</span>0</div><div class="meta-item"><span>评论:</span>0</div></div><div class="card-extra-meta"><span class="category-tag">火影忍者</span><span class="category-tag">佐助</span><span class="category-tag">鸣人</span><span class="category-tag">动画综合</span></div>
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-thumbnail"><a href="http://www.bilibili.com/video/av114758875421971" target="_blank" rel="noopener noreferrer"><img src="http://i0.hdslb.com/bfs/archive/4cd541b8ed9250dcd9d60d22a194148a1af2cc58.jpg" alt="Thumbnail"></a></div>
+                        <div class="card-content">
+                            <div class="card-title"><a href="http://www.bilibili.com/video/av114758875421971" target="_blank" rel="noopener noreferrer">盘点宇智波狂笑四节谁最狂</a></div>
+                            <div class="card-meta"><span>柒捌动漫社</span> • <span>2025-06-28 15:30</span></div>
+                            
+                            <div class="meta-grid"><div class="meta-item"><span>时长:</span>08:06</div><div class="meta-item"><span>播放:</span>27</div><div class="meta-item"><span>收藏:</span>0</div><div class="meta-item"><span>弹幕:</span>0</div><div class="meta-item"><span>评论:</span>0</div></div><div class="card-extra-meta"><span class="category-tag">火影忍者</span><span class="category-tag">佐助</span><span class="category-tag">写轮眼</span><span class="category-tag">动画综合</span></div>
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-thumbnail"><a href="http://www.bilibili.com/video/av114759781322655" target="_blank" rel="noopener noreferrer"><img src="http://i0.hdslb.com/bfs/archive/e38f205bdde00c6567e15382536f36a8eb49c45f.jpg" alt="Thumbnail"></a></div>
+                        <div class="card-content">
+                            <div class="card-title"><a href="http://www.bilibili.com/video/av114759781322655" target="_blank" rel="noopener noreferrer">火影忍者 盘点木叶的七大叛忍 四个六道级 两个半步六道级 宇智波鼬最弱！</a></div>
+                            <div class="card-meta"><span>撒旦家的布欧先生</span> • <span>2025-06-28 15:27</span></div>
+                            
+                            <div class="meta-grid"><div class="meta-item"><span>时长:</span>12:20</div><div class="meta-item"><span>播放:</span>971</div><div class="meta-item"><span>收藏:</span>8</div><div class="meta-item"><span>弹幕:</span>1</div><div class="meta-item"><span>评论:</span>4</div></div><div class="card-extra-meta"><span class="category-tag">火影忍者</span><span class="category-tag">佐助</span><span class="category-tag">鸣人</span><span class="category-tag">写轮眼</span><span class="category-tag">宇智波鼬</span><span class="category-tag">动漫杂谈</span></div>
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-thumbnail"><a href="http://www.bilibili.com/video/av114758875356672" target="_blank" rel="noopener noreferrer"><img src="http://i1.hdslb.com/bfs/archive/39634b7463628c62980aa98ba8b59205ac6fe0f4.jpg" alt="Thumbnail"></a></div>
+                        <div class="card-content">
+                            <div class="card-title"><a href="http://www.bilibili.com/video/av114758875356672" target="_blank" rel="noopener noreferrer">云隐村第二完美人柱力，颜值与实力并具，奇拉比克星</a></div>
+                            <div class="card-meta"><span>柒捌动漫社</span> • <span>2025-06-28 15:10</span></div>
+                            
+                            <div class="meta-grid"><div class="meta-item"><span>时长:</span>08:37</div><div class="meta-item"><span>播放:</span>32</div><div class="meta-item"><span>收藏:</span>0</div><div class="meta-item"><span>弹幕:</span>0</div><div class="meta-item"><span>评论:</span>0</div></div><div class="card-extra-meta"><span class="category-tag">热血</span><span class="category-tag">佐助</span><span class="category-tag">鸣人</span><span class="category-tag">动画综合</span></div>
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-thumbnail"><a href="http://www.bilibili.com/video/av114758858578170" target="_blank" rel="noopener noreferrer"><img src="http://i0.hdslb.com/bfs/archive/8200d7c269d6e633e2bbe9d7644e455cba2d75c0.jpg" alt="Thumbnail"></a></div>
+                        <div class="card-content">
+                            <div class="card-title"><a href="http://www.bilibili.com/video/av114758858578170" target="_blank" rel="noopener noreferrer">佐助的天赋远胜过鼬 在宇智波一族的历史上名列第二！</a></div>
+                            <div class="card-meta"><span>柒捌动漫社</span> • <span>2025-06-28 14:30</span></div>
+                            
+                            <div class="meta-grid"><div class="meta-item"><span>时长:</span>10:27</div><div class="meta-item"><span>播放:</span>48</div><div class="meta-item"><span>收藏:</span>0</div><div class="meta-item"><span>弹幕:</span>0</div><div class="meta-item"><span>评论:</span>1</div></div><div class="card-extra-meta"><span class="category-tag">火影忍者</span><span class="category-tag">佐助</span><span class="category-tag">写轮眼</span><span class="category-tag">动画综合</span></div>
+                            
+                        </div>
+                    </div>
+                    
+                </div>
+                
+                <div id="tab-3" class="tab-panel">
+                    
+                    <div class="card">
+                        <div class="card-thumbnail"><a href="http://www.bilibili.com/video/av114759764610194" target="_blank" rel="noopener noreferrer"><img src="http://i2.hdslb.com/bfs/archive/26553b0b3ee1a6b5fc609b0dc6e43560c0a34d29.jpg" alt="Thumbnail"></a></div>
+                        <div class="card-content">
+                            <div class="card-title"><a href="http://www.bilibili.com/video/av114759764610194" target="_blank" rel="noopener noreferrer">佐鸣</a></div>
+                            <div class="card-meta"><span>QQ星t</span> • <span>2025-06-28 15:20</span></div>
+                            
+                            <div class="meta-grid"><div class="meta-item"><span>时长:</span>00:12</div><div class="meta-item"><span>播放:</span>8</div><div class="meta-item"><span>收藏:</span>1</div><div class="meta-item"><span>弹幕:</span>0</div><div class="meta-item"><span>评论:</span>0</div></div><div class="card-extra-meta"><span class="category-tag">火影忍者</span><span class="category-tag">宇智波佐助</span><span class="category-tag">漩涡鸣人</span><span class="category-tag">动画综合</span></div>
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-thumbnail"><a href="http://www.bilibili.com/video/av114758942466039" target="_blank" rel="noopener noreferrer"><img src="http://i2.hdslb.com/bfs/archive/14bfb32be6339f0c622dbe2533b30af3705b1af1.jpg" alt="Thumbnail"></a></div>
+                        <div class="card-content">
+                            <div class="card-title"><a href="http://www.bilibili.com/video/av114758942466039" target="_blank" rel="noopener noreferrer">爸爸妈妈今晚我自己睡～</a></div>
+                            <div class="card-meta"><span>BL超级霹雳大炸虾</span> • <span>2025-06-28 11:52</span></div>
+                            
+                            <div class="meta-grid"><div class="meta-item"><span>时长:</span>00:16</div><div class="meta-item"><span>播放:</span>211</div><div class="meta-item"><span>收藏:</span>7</div><div class="meta-item"><span>弹幕:</span>0</div><div class="meta-item"><span>评论:</span>3</div></div><div class="card-extra-meta"><span class="category-tag">火影忍者</span><span class="category-tag">佐鸣</span><span class="category-tag">佐助鸣人</span><span class="category-tag">同人·手书</span></div>
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-thumbnail"><a href="http://www.bilibili.com/video/av114758892127232" target="_blank" rel="noopener noreferrer"><img src="http://i2.hdslb.com/bfs/archive/d673dcd477abedf19093dd41208d7b225e5aab57.jpg" alt="Thumbnail"></a></div>
+                        <div class="card-content">
+                            <div class="card-title"><a href="http://www.bilibili.com/video/av114758892127232" target="_blank" rel="noopener noreferrer">佐鸣meme</a></div>
+                            <div class="card-meta"><span>岁业</span> • <span>2025-06-28 11:36</span></div>
+                            
+                            <div class="meta-grid"><div class="meta-item"><span>时长:</span>00:17</div><div class="meta-item"><span>播放:</span>299</div><div class="meta-item"><span>收藏:</span>26</div><div class="meta-item"><span>弹幕:</span>0</div><div class="meta-item"><span>评论:</span>6</div></div><div class="card-extra-meta"><span class="category-tag">火影忍者</span><span class="category-tag">佐鸣</span><span class="category-tag">宇智波佐助</span><span class="category-tag">MEME</span><span class="category-tag">漩涡鸣人</span><span class="category-tag">MAD·AMV</span></div>
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-thumbnail"><a href="http://www.bilibili.com/video/av114756023360723" target="_blank" rel="noopener noreferrer"><img src="http://i2.hdslb.com/bfs/archive/5074ea74ab7e2826ba011de060fb248315876359.jpg" alt="Thumbnail"></a></div>
+                        <div class="card-content">
+                            <div class="card-title"><a href="http://www.bilibili.com/video/av114756023360723" target="_blank" rel="noopener noreferrer">佐助你发什么情？！</a></div>
+                            <div class="card-meta"><span>秃鹫2M3</span> • <span>2025-06-27 23:31</span></div>
+                            
+                            <div class="meta-grid"><div class="meta-item"><span>时长:</span>00:17</div><div class="meta-item"><span>播放:</span>392</div><div class="meta-item"><span>收藏:</span>22</div><div class="meta-item"><span>弹幕:</span>0</div><div class="meta-item"><span>评论:</span>4</div></div><div class="card-extra-meta"><span class="category-tag">火影忍者</span><span class="category-tag">佐鸣</span><span class="category-tag">动画综合</span></div>
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-thumbnail"><a href="http://www.bilibili.com/video/av114754580450903" target="_blank" rel="noopener noreferrer"><img src="http://i1.hdslb.com/bfs/archive/d6cc892c23ccea2c8f36ecdf90e8f386c07ac6a8.jpg" alt="Thumbnail"></a></div>
+                        <div class="card-content">
+                            <div class="card-title"><a href="http://www.bilibili.com/video/av114754580450903" target="_blank" rel="noopener noreferrer">火影cp出去旅游会是什么情况</a></div>
+                            <div class="card-meta"><span>橘子大头猫</span> • <span>2025-06-27 17:20</span></div>
+                            
+                            <div class="meta-grid"><div class="meta-item"><span>时长:</span>01:17</div><div class="meta-item"><span>播放:</span>520</div><div class="meta-item"><span>收藏:</span>9</div><div class="meta-item"><span>弹幕:</span>0</div><div class="meta-item"><span>评论:</span>3</div></div><div class="card-extra-meta"><span class="category-tag">佐鸣</span><span class="category-tag">柱斑</span><span class="category-tag">四玖</span><span class="category-tag">止鼬</span><span class="category-tag">扉泉</span><span class="category-tag">ooc致歉</span><span class="category-tag">动画综合</span></div>
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-thumbnail"><a href="http://www.bilibili.com/video/av114753741523052" target="_blank" rel="noopener noreferrer"><img src="http://i0.hdslb.com/bfs/archive/557d65b29ec356b811072fa40589d214a69e2e86.jpg" alt="Thumbnail"></a></div>
+                        <div class="card-content">
+                            <div class="card-title"><a href="http://www.bilibili.com/video/av114753741523052" target="_blank" rel="noopener noreferrer">（佐鸣）</a></div>
+                            <div class="card-meta"><span>媃煊</span> • <span>2025-06-27 13:48</span></div>
+                            
+                            <div class="meta-grid"><div class="meta-item"><span>时长:</span>00:28</div><div class="meta-item"><span>播放:</span>119</div><div class="meta-item"><span>收藏:</span>7</div><div class="meta-item"><span>弹幕:</span>0</div><div class="meta-item"><span>评论:</span>0</div></div><div class="card-extra-meta"><span class="category-tag">佐鸣</span><span class="category-tag">动画综合</span></div>
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-thumbnail"><a href="http://www.bilibili.com/video/av114752902662947" target="_blank" rel="noopener noreferrer"><img src="http://i1.hdslb.com/bfs/archive/f52b5a37f4eb2aeea5fdaef70a80cfa40604267e.jpg" alt="Thumbnail"></a></div>
+                        <div class="card-content">
+                            <div class="card-title"><a href="http://www.bilibili.com/video/av114752902662947" target="_blank" rel="noopener noreferrer">[佐鸣]我难道不是天才吗</a></div>
+                            <div class="card-meta"><span>佐天有鸣天SN</span> • <span>2025-06-27 10:13</span></div>
+                            
+                            <div class="meta-grid"><div class="meta-item"><span>时长:</span>00:13</div><div class="meta-item"><span>播放:</span>385</div><div class="meta-item"><span>收藏:</span>7</div><div class="meta-item"><span>弹幕:</span>0</div><div class="meta-item"><span>评论:</span>2</div></div><div class="card-extra-meta"><span class="category-tag">火影忍者</span><span class="category-tag">佐鸣</span><span class="category-tag">宇智波佐助</span><span class="category-tag">漩涡鸣人</span><span class="category-tag">旗木卡卡西</span><span class="category-tag">动画综合</span></div>
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-thumbnail"><a href="http://www.bilibili.com/video/av114752533569505" target="_blank" rel="noopener noreferrer"><img src="http://i1.hdslb.com/bfs/archive/ec1f511fb6405867b6f84ae7609c0dc75912db63.jpg" alt="Thumbnail"></a></div>
+                        <div class="card-content">
+                            <div class="card-title"><a href="http://www.bilibili.com/video/av114752533569505" target="_blank" rel="noopener noreferrer">我和我的兄弟双排时</a></div>
+                            <div class="card-meta"><span>风间间子</span> • <span>2025-06-27 08:42</span></div>
+                            
+                            <div class="meta-grid"><div class="meta-item"><span>时长:</span>00:51</div><div class="meta-item"><span>播放:</span>2587</div><div class="meta-item"><span>收藏:</span>51</div><div class="meta-item"><span>弹幕:</span>1</div><div class="meta-item"><span>评论:</span>4</div></div><div class="card-extra-meta"><span class="category-tag">热血</span><span class="category-tag">火影忍者</span><span class="category-tag">佐鸣</span><span class="category-tag">佐助</span><span class="category-tag">鸣人</span><span class="category-tag">MAD·AMV</span></div>
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-thumbnail"><a href="http://www.bilibili.com/video/av114750402861646" target="_blank" rel="noopener noreferrer"><img src="http://i2.hdslb.com/bfs/archive/1ddab597d1b35302e99c0a0c5be5c07bdc5e6ce4.jpg" alt="Thumbnail"></a></div>
+                        <div class="card-content">
+                            <div class="card-title"><a href="http://www.bilibili.com/video/av114750402861646" target="_blank" rel="noopener noreferrer">爱情专属权</a></div>
+                            <div class="card-meta"><span>正能量动漫屋</span> • <span>2025-06-27 07:00</span></div>
+                            
+                            <div class="meta-grid"><div class="meta-item"><span>时长:</span>00:24</div><div class="meta-item"><span>播放:</span>1092</div><div class="meta-item"><span>收藏:</span>22</div><div class="meta-item"><span>弹幕:</span>0</div><div class="meta-item"><span>评论:</span>5</div></div><div class="card-extra-meta"><span class="category-tag">火影忍者</span><span class="category-tag">佐鸣</span><span class="category-tag">佐鸣永远热恋</span><span class="category-tag">碧优蒂的世界</span><span class="category-tag">二次元副本挑战者</span><span class="category-tag">二次元副本大作战3.0</span><span class="category-tag">动画综合</span></div>
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-thumbnail"><a href="http://www.bilibili.com/video/av114749631106099" target="_blank" rel="noopener noreferrer"><img src="http://i2.hdslb.com/bfs/archive/e3eaebcb671e06aa4fc1e4deafb460070578467f.jpg" alt="Thumbnail"></a></div>
+                        <div class="card-content">
+                            <div class="card-title"><a href="http://www.bilibili.com/video/av114749631106099" target="_blank" rel="noopener noreferrer">［佐鸣］ Just leave me alone</a></div>
+                            <div class="card-meta"><span>-香醇可可</span> • <span>2025-06-26 20:21</span></div>
+                            
+                            <div class="meta-grid"><div class="meta-item"><span>时长:</span>00:12</div><div class="meta-item"><span>播放:</span>496</div><div class="meta-item"><span>收藏:</span>31</div><div class="meta-item"><span>弹幕:</span>0</div><div class="meta-item"><span>评论:</span>4</div></div><div class="card-extra-meta"><span class="category-tag">佐鸣</span><span class="category-tag">佐鸣CP</span><span class="category-tag">3799</span><span class="category-tag">佐鸣永远热恋</span><span class="category-tag">佐鸣99</span><span class="category-tag">MAD·AMV</span></div>
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-thumbnail"><a href="http://www.bilibili.com/video/av114746879706285" target="_blank" rel="noopener noreferrer"><img src="http://i1.hdslb.com/bfs/archive/19ad50fea06d058b650ea54eabfca81a060c1e0c.jpg" alt="Thumbnail"></a></div>
+                        <div class="card-content">
+                            <div class="card-title"><a href="http://www.bilibili.com/video/av114746879706285" target="_blank" rel="noopener noreferrer">最适合佐鸣的BGM出现了</a></div>
+                            <div class="card-meta"><span>爱斗的陆</span> • <span>2025-06-26 08:44</span></div>
+                            
+                            <div class="meta-grid"><div class="meta-item"><span>时长:</span>00:14</div><div class="meta-item"><span>播放:</span>552</div><div class="meta-item"><span>收藏:</span>5</div><div class="meta-item"><span>弹幕:</span>0</div><div class="meta-item"><span>评论:</span>0</div></div><div class="card-extra-meta"><span class="category-tag">火影忍者</span><span class="category-tag">佐鸣</span><span class="category-tag">禁ky</span><span class="category-tag">动画综合</span></div>
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-thumbnail"><a href="http://www.bilibili.com/video/av114745420023012" target="_blank" rel="noopener noreferrer"><img src="http://i1.hdslb.com/bfs/archive/77f186d08ec228e16bae4d3b1a24ce8c80ad59b5.jpg" alt="Thumbnail"></a></div>
+                        <div class="card-content">
+                            <div class="card-title"><a href="http://www.bilibili.com/video/av114745420023012" target="_blank" rel="noopener noreferrer">【佐鸣】＂多么想要躺在你怀里_＂</a></div>
+                            <div class="card-meta"><span>stbmliyuqi_</span> • <span>2025-06-26 02:35</span></div>
+                            
+                            <div class="meta-grid"><div class="meta-item"><span>时长:</span>00:16</div><div class="meta-item"><span>播放:</span>127</div><div class="meta-item"><span>收藏:</span>4</div><div class="meta-item"><span>弹幕:</span>0</div><div class="meta-item"><span>评论:</span>3</div></div><div class="card-extra-meta"><span class="category-tag">火影忍者</span><span class="category-tag">佐鸣</span><span class="category-tag">宇智波佐助</span><span class="category-tag">CP</span><span class="category-tag">漩涡鸣人</span><span class="category-tag">动画综合</span></div>
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-thumbnail"><a href="http://www.bilibili.com/video/av114744883157725" target="_blank" rel="noopener noreferrer"><img src="http://i0.hdslb.com/bfs/archive/88cacb2d12a416f09c792d04a57259c88f27accb.jpg" alt="Thumbnail"></a></div>
+                        <div class="card-content">
+                            <div class="card-title"><a href="http://www.bilibili.com/video/av114744883157725" target="_blank" rel="noopener noreferrer">不要贴脸啊</a></div>
+                            <div class="card-meta"><span>祀綪</span> • <span>2025-06-26 00:18</span></div>
+                            
+                            <div class="meta-grid"><div class="meta-item"><span>时长:</span>00:11</div><div class="meta-item"><span>播放:</span>167</div><div class="meta-item"><span>收藏:</span>2</div><div class="meta-item"><span>弹幕:</span>0</div><div class="meta-item"><span>评论:</span>1</div></div><div class="card-extra-meta"><span class="category-tag">佐鸣</span><span class="category-tag">卡鸣</span><span class="category-tag">all鸣</span><span class="category-tag">动画综合</span></div>
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-thumbnail"><a href="http://www.bilibili.com/video/av114744178509160" target="_blank" rel="noopener noreferrer"><img src="http://i2.hdslb.com/bfs/archive/1b145696a18df9416555bf4a05352ba1eb729b44.jpg" alt="Thumbnail"></a></div>
+                        <div class="card-content">
+                            <div class="card-title"><a href="http://www.bilibili.com/video/av114744178509160" target="_blank" rel="noopener noreferrer">【佐鸣】抱是为了弥补右胸膛没有的心跳_</a></div>
+                            <div class="card-meta"><span>stbmliyuqi_</span> • <span>2025-06-25 21:18</span></div>
+                            
+                            <div class="meta-grid"><div class="meta-item"><span>时长:</span>00:39</div><div class="meta-item"><span>播放:</span>229</div><div class="meta-item"><span>收藏:</span>12</div><div class="meta-item"><span>弹幕:</span>0</div><div class="meta-item"><span>评论:</span>2</div></div><div class="card-extra-meta"><span class="category-tag">火影忍者</span><span class="category-tag">佐鸣</span><span class="category-tag">宇智波佐助</span><span class="category-tag">漩涡鸣人</span><span class="category-tag">动画综合</span></div>
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-thumbnail"><a href="http://www.bilibili.com/video/av114742081425088" target="_blank" rel="noopener noreferrer"><img src="http://i2.hdslb.com/bfs/archive/c6e13fc53789ed6de3f44c3c90c29bb0e0a237c0.jpg" alt="Thumbnail"></a></div>
+                        <div class="card-content">
+                            <div class="card-title"><a href="http://www.bilibili.com/video/av114742081425088" target="_blank" rel="noopener noreferrer">进来看我对象</a></div>
+                            <div class="card-meta"><span>佐天有鸣天SN</span> • <span>2025-06-25 12:24</span></div>
+                            
+                            <div class="meta-grid"><div class="meta-item"><span>时长:</span>00:10</div><div class="meta-item"><span>播放:</span>361</div><div class="meta-item"><span>收藏:</span>1</div><div class="meta-item"><span>弹幕:</span>0</div><div class="meta-item"><span>评论:</span>1</div></div><div class="card-extra-meta"><span class="category-tag">火影忍者</span><span class="category-tag">佐鸣</span><span class="category-tag">宇智波佐助</span><span class="category-tag">漩涡鸣人</span><span class="category-tag">动画综合</span></div>
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-thumbnail"><a href="http://www.bilibili.com/video/av114741997470770" target="_blank" rel="noopener noreferrer"><img src="http://i0.hdslb.com/bfs/archive/0a34f3340a1e4d18a0b47785b1587f58c683c1c6.jpg" alt="Thumbnail"></a></div>
+                        <div class="card-content">
+                            <div class="card-title"><a href="http://www.bilibili.com/video/av114741997470770" target="_blank" rel="noopener noreferrer">这是佐鸣第一次大决战 差点以为是大结局，两人使出各自最强的忍术千鸟和螺旋丸</a></div>
+                            <div class="card-meta"><span>三言说动漫</span> • <span>2025-06-25 12:00</span></div>
+                            
+                            <div class="meta-grid"><div class="meta-item"><span>时长:</span>07:49</div><div class="meta-item"><span>播放:</span>565</div><div class="meta-item"><span>收藏:</span>0</div><div class="meta-item"><span>弹幕:</span>0</div><div class="meta-item"><span>评论:</span>1</div></div><div class="card-extra-meta"><span class="category-tag">火影忍者</span><span class="category-tag">佐鸣</span><span class="category-tag">鸣人</span><span class="category-tag">宇智波佐助</span><span class="category-tag">螺旋丸</span><span class="category-tag">漩涡鸣人</span><span class="category-tag">忍术</span><span class="category-tag">大决战</span><span class="category-tag">寻光小宇宙奖</span><span class="category-tag">第七届哔哩哔哩寻光计划小宇宙奖</span><span class="category-tag">动漫杂谈</span></div>
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-thumbnail"><a href="http://www.bilibili.com/video/av114738071668347" target="_blank" rel="noopener noreferrer"><img src="http://i1.hdslb.com/bfs/archive/c2acf20f762a8849fad94b0df381ab145cb4d821.jpg" alt="Thumbnail"></a></div>
+                        <div class="card-content">
+                            <div class="card-title"><a href="http://www.bilibili.com/video/av114738071668347" target="_blank" rel="noopener noreferrer">【佐鸣】《回村的诱惑》Ты засадишь</a></div>
+                            <div class="card-meta"><span>夜鸟Ye</span> • <span>2025-06-24 19:23</span></div>
+                            
+                            <div class="meta-grid"><div class="meta-item"><span>时长:</span>00:16</div><div class="meta-item"><span>播放:</span>1972</div><div class="meta-item"><span>收藏:</span>150</div><div class="meta-item"><span>弹幕:</span>0</div><div class="meta-item"><span>评论:</span>21</div></div><div class="card-extra-meta"><span class="category-tag">佐鸣</span><span class="category-tag">MEME</span><span class="category-tag">动画综合</span></div>
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-thumbnail"><a href="http://www.bilibili.com/video/av114737601907876" target="_blank" rel="noopener noreferrer"><img src="http://i2.hdslb.com/bfs/archive/1b85819e672342a31237bb8d297a91e78d009a79.jpg" alt="Thumbnail"></a></div>
+                        <div class="card-content">
+                            <div class="card-title"><a href="http://www.bilibili.com/video/av114737601907876" target="_blank" rel="noopener noreferrer">手绘权威夫妇</a></div>
+                            <div class="card-meta"><span>桃叽夭夭よ</span> • <span>2025-06-24 17:25</span></div>
+                            
+                            <div class="meta-grid"><div class="meta-item"><span>时长:</span>00:28</div><div class="meta-item"><span>播放:</span>448</div><div class="meta-item"><span>收藏:</span>10</div><div class="meta-item"><span>弹幕:</span>0</div><div class="meta-item"><span>评论:</span>3</div></div><div class="card-extra-meta"><span class="category-tag">爱情</span><span class="category-tag">绘画</span><span class="category-tag">火影忍者</span><span class="category-tag">鸣佐</span><span class="category-tag">佐鸣</span><span class="category-tag">佐助</span><span class="category-tag">鸣人</span><span class="category-tag">致歉一切</span><span class="category-tag">贴脸4000+</span><span class="category-tag">画师百日创作挑战</span><span class="category-tag">同人·手书</span></div>
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-thumbnail"><a href="http://www.bilibili.com/video/av114732266684484" target="_blank" rel="noopener noreferrer"><img src="http://i1.hdslb.com/bfs/archive/7218e93d5c5b7c67642071e6f4bcf3197494afa4.jpg" alt="Thumbnail"></a></div>
+                        <div class="card-content">
+                            <div class="card-title"><a href="http://www.bilibili.com/video/av114732266684484" target="_blank" rel="noopener noreferrer">仅佐助看的教程😋</a></div>
+                            <div class="card-meta"><span>不能佐你如果纳</span> • <span>2025-06-23 18:45</span></div>
+                            
+                            <div class="meta-grid"><div class="meta-item"><span>时长:</span>00:10</div><div class="meta-item"><span>播放:</span>425</div><div class="meta-item"><span>收藏:</span>7</div><div class="meta-item"><span>弹幕:</span>0</div><div class="meta-item"><span>评论:</span>9</div></div><div class="card-extra-meta"><span class="category-tag">佐鸣</span><span class="category-tag">宇智波佐助</span><span class="category-tag">美食制作</span><span class="category-tag">国宴</span><span class="category-tag">同人·手书</span></div>
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-thumbnail"><a href="http://www.bilibili.com/video/av114732048654163" target="_blank" rel="noopener noreferrer"><img src="http://i2.hdslb.com/bfs/archive/61400c4def1405d2c0286f54dfe8e5f1771671da.jpg" alt="Thumbnail"></a></div>
+                        <div class="card-content">
+                            <div class="card-title"><a href="http://www.bilibili.com/video/av114732048654163" target="_blank" rel="noopener noreferrer">爱的人没可能</a></div>
+                            <div class="card-meta"><span>超级大笨痴</span> • <span>2025-06-23 17:50</span></div>
+                            
+                            <div class="meta-grid"><div class="meta-item"><span>时长:</span>01:32</div><div class="meta-item"><span>播放:</span>381</div><div class="meta-item"><span>收藏:</span>5</div><div class="meta-item"><span>弹幕:</span>0</div><div class="meta-item"><span>评论:</span>1</div></div><div class="card-extra-meta"><span class="category-tag">火影忍者</span><span class="category-tag">佐鸣</span><span class="category-tag">动画综合</span></div>
+                            
+                        </div>
+                    </div>
+                    
+                </div>
+                
+                <div id="tab-4" class="tab-panel">
+                    
+                    <div class="card">
+                        <div class="card-thumbnail"><a href="http://www.bilibili.com/video/av114758875356664" target="_blank" rel="noopener noreferrer"><img src="http://i2.hdslb.com/bfs/archive/ecaf3bbba3e6ee767823719f03e34cf62a4dcd03.jpg" alt="Thumbnail"></a></div>
+                        <div class="card-content">
+                            <div class="card-title"><a href="http://www.bilibili.com/video/av114758875356664" target="_blank" rel="noopener noreferrer">盘点第4次忍界大战木叶12小强除鸣佐之外的战绩，有人控制带土2次</a></div>
+                            <div class="card-meta"><span>柒捌动漫社</span> • <span>2025-06-28 17:45</span></div>
+                            
+                            <div class="meta-grid"><div class="meta-item"><span>时长:</span>14:44</div><div class="meta-item"><span>播放:</span>0</div><div class="meta-item"><span>收藏:</span>0</div><div class="meta-item"><span>弹幕:</span>0</div><div class="meta-item"><span>评论:</span>0</div></div><div class="card-extra-meta"><span class="category-tag">宇智波佐助</span><span class="category-tag">宇智波带土</span><span class="category-tag">漩涡鸣人</span><span class="category-tag">动画综合</span></div>
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-thumbnail"><a href="http://www.bilibili.com/video/av114759294785940" target="_blank" rel="noopener noreferrer"><img src="http://i1.hdslb.com/bfs/archive/7c14d201c58d7673e55c701d32f3ba6aece070df.jpg" alt="Thumbnail"></a></div>
+                        <div class="card-content">
+                            <div class="card-title"><a href="http://www.bilibili.com/video/av114759294785940" target="_blank" rel="noopener noreferrer">都磕鸣佐，那我就磕一下鸣卡吧…！…</a></div>
+                            <div class="card-meta"><span>小悟不玩次元</span> • <span>2025-06-28 13:21</span></div>
+                            
+                            <div class="meta-grid"><div class="meta-item"><span>时长:</span>01:00</div><div class="meta-item"><span>播放:</span>300</div><div class="meta-item"><span>收藏:</span>2</div><div class="meta-item"><span>弹幕:</span>0</div><div class="meta-item"><span>评论:</span>0</div></div><div class="card-extra-meta"><span class="category-tag">火影忍者</span><span class="category-tag">佐助</span><span class="category-tag">鸣人</span><span class="category-tag">宇智波佐助</span><span class="category-tag">漩涡鸣人</span><span class="category-tag">必剪创作</span><span class="category-tag">鸣人与卡卡西</span><span class="category-tag">动画综合</span></div>
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-thumbnail"><a href="http://www.bilibili.com/video/av114758573365708" target="_blank" rel="noopener noreferrer"><img src="http://i1.hdslb.com/bfs/archive/4f83c2480d8a004adba5b5a8bb7f03d85feab951.jpg" alt="Thumbnail"></a></div>
+                        <div class="card-content">
+                            <div class="card-title"><a href="http://www.bilibili.com/video/av114758573365708" target="_blank" rel="noopener noreferrer">【鸣佐】怪物</a></div>
+                            <div class="card-meta"><span>---恍恍---</span> • <span>2025-06-28 10:18</span></div>
+                            
+                            <div class="meta-grid"><div class="meta-item"><span>时长:</span>00:24</div><div class="meta-item"><span>播放:</span>318</div><div class="meta-item"><span>收藏:</span>26</div><div class="meta-item"><span>弹幕:</span>0</div><div class="meta-item"><span>评论:</span>22</div></div><div class="card-extra-meta"><span class="category-tag">火影忍者</span><span class="category-tag">鸣佐</span><span class="category-tag">同人·手书</span></div>
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-thumbnail"><a href="http://www.bilibili.com/video/av114754697829099" target="_blank" rel="noopener noreferrer"><img src="http://i1.hdslb.com/bfs/archive/9f89bfe98f8c95238759420b0152ee8b7db739ad.jpg" alt="Thumbnail"></a></div>
+                        <div class="card-content">
+                            <div class="card-title"><a href="http://www.bilibili.com/video/av114754697829099" target="_blank" rel="noopener noreferrer">四代火影没死宇智波也没被灭，开局完美状态下鸣佐实力成长对比</a></div>
+                            <div class="card-meta"><span>柒捌动漫社</span> • <span>2025-06-27 17:53</span></div>
+                            
+                            <div class="meta-grid"><div class="meta-item"><span>时长:</span>12:45</div><div class="meta-item"><span>播放:</span>61</div><div class="meta-item"><span>收藏:</span>0</div><div class="meta-item"><span>弹幕:</span>0</div><div class="meta-item"><span>评论:</span>0</div></div><div class="card-extra-meta"><span class="category-tag">火影忍者</span><span class="category-tag">宇智波佐助</span><span class="category-tag">漩涡鸣人</span><span class="category-tag">动画综合</span></div>
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-thumbnail"><a href="http://www.bilibili.com/video/av114754697829965" target="_blank" rel="noopener noreferrer"><img src="http://i0.hdslb.com/bfs/archive/7ab71c57d2eb29bfa5e8b9772501aee6b7a05d28.jpg" alt="Thumbnail"></a></div>
+                        <div class="card-content">
+                            <div class="card-title"><a href="http://www.bilibili.com/video/av114754697829965" target="_blank" rel="noopener noreferrer">打了三天三夜的忍界大战终于结束，鸣佐大战开启</a></div>
+                            <div class="card-meta"><span>柒捌动漫社</span> • <span>2025-06-27 17:50</span></div>
+                            
+                            <div class="meta-grid"><div class="meta-item"><span>时长:</span>11:06</div><div class="meta-item"><span>播放:</span>56</div><div class="meta-item"><span>收藏:</span>0</div><div class="meta-item"><span>弹幕:</span>0</div><div class="meta-item"><span>评论:</span>0</div></div><div class="card-extra-meta"><span class="category-tag">火影忍者</span><span class="category-tag">宇智波佐助</span><span class="category-tag">漩涡鸣人</span><span class="category-tag">动画综合</span></div>
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-thumbnail"><a href="http://www.bilibili.com/video/av114751610822492" target="_blank" rel="noopener noreferrer"><img src="http://i0.hdslb.com/bfs/archive/692c9cbd69ffda9b4655601bbd1769b5b7f2c144.jpg" alt="Thumbnail"></a></div>
+                        <div class="card-content">
+                            <div class="card-title"><a href="http://www.bilibili.com/video/av114751610822492" target="_blank" rel="noopener noreferrer">【鸣佐】好孩子和狐仙</a></div>
+                            <div class="card-meta"><span>---恍恍---</span> • <span>2025-06-27 04:46</span></div>
+                            
+                            <div class="meta-grid"><div class="meta-item"><span>时长:</span>00:26</div><div class="meta-item"><span>播放:</span>563</div><div class="meta-item"><span>收藏:</span>19</div><div class="meta-item"><span>弹幕:</span>1</div><div class="meta-item"><span>评论:</span>8</div></div><div class="card-extra-meta"><span class="category-tag">火影忍者</span><span class="category-tag">鸣佐</span><span class="category-tag">同人·手书</span></div>
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-thumbnail"><a href="http://www.bilibili.com/video/av114748456704646" target="_blank" rel="noopener noreferrer"><img src="http://i0.hdslb.com/bfs/archive/1b25bebfcd05f3973f22291dae93a9f4195dff52.jpg" alt="Thumbnail"></a></div>
+                        <div class="card-content">
+                            <div class="card-title"><a href="http://www.bilibili.com/video/av114748456704646" target="_blank" rel="noopener noreferrer">好萌好萌的小纳，请支持我们萌1</a></div>
+                            <div class="card-meta"><span>余辞漾也</span> • <span>2025-06-26 15:25</span></div>
+                            
+                            <div class="meta-grid"><div class="meta-item"><span>时长:</span>00:19</div><div class="meta-item"><span>播放:</span>115</div><div class="meta-item"><span>收藏:</span>1</div><div class="meta-item"><span>弹幕:</span>0</div><div class="meta-item"><span>评论:</span>0</div></div><div class="card-extra-meta"><span class="category-tag">可爱</span><span class="category-tag">火影忍者</span><span class="category-tag">鸣佐</span><span class="category-tag">漩涡鸣人</span><span class="category-tag">动画综合</span></div>
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-thumbnail"><a href="http://www.bilibili.com/video/av114746544103092" target="_blank" rel="noopener noreferrer"><img src="http://i2.hdslb.com/bfs/archive/11d567caa8023d426e75c8d58581c372582ef982.jpg" alt="Thumbnail"></a></div>
+                        <div class="card-content">
+                            <div class="card-title"><a href="http://www.bilibili.com/video/av114746544103092" target="_blank" rel="noopener noreferrer">【鸣佐】盛夏</a></div>
+                            <div class="card-meta"><span>---恍恍---</span> • <span>2025-06-26 07:19</span></div>
+                            
+                            <div class="meta-grid"><div class="meta-item"><span>时长:</span>00:25</div><div class="meta-item"><span>播放:</span>444</div><div class="meta-item"><span>收藏:</span>16</div><div class="meta-item"><span>弹幕:</span>0</div><div class="meta-item"><span>评论:</span>6</div></div><div class="card-extra-meta"><span class="category-tag">火影忍者</span><span class="category-tag">鸣佐</span><span class="category-tag">同人·手书</span></div>
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-thumbnail"><a href="http://www.bilibili.com/video/av114743188658878" target="_blank" rel="noopener noreferrer"><img src="http://i2.hdslb.com/bfs/archive/e40d3dda1a857382fcb4daf658ab8b8b9d22bbe6.jpg" alt="Thumbnail"></a></div>
+                        <div class="card-content">
+                            <div class="card-title"><a href="http://www.bilibili.com/video/av114743188658878" target="_blank" rel="noopener noreferrer">宇智波没被灭四代没死，鸣佐实力会如何？佐助根本竞争不过鸣人</a></div>
+                            <div class="card-meta"><span>柒捌动漫社</span> • <span>2025-06-25 17:05</span></div>
+                            
+                            <div class="meta-grid"><div class="meta-item"><span>时长:</span>11:23</div><div class="meta-item"><span>播放:</span>391</div><div class="meta-item"><span>收藏:</span>2</div><div class="meta-item"><span>弹幕:</span>0</div><div class="meta-item"><span>评论:</span>0</div></div><div class="card-extra-meta"><span class="category-tag">火影忍者</span><span class="category-tag">宇智波佐助</span><span class="category-tag">漩涡鸣人</span><span class="category-tag">动画综合</span></div>
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-thumbnail"><a href="http://www.bilibili.com/video/av114743155105124" target="_blank" rel="noopener noreferrer"><img src="http://i0.hdslb.com/bfs/archive/e4276d79de82c9e800020a9d0fc71958b1df0fd0.jpg" alt="Thumbnail"></a></div>
+                        <div class="card-content">
+                            <div class="card-title"><a href="http://www.bilibili.com/video/av114743155105124" target="_blank" rel="noopener noreferrer">鸣佐终结谷大战完美版，自来也活到大结局，可怜照美冥被做成傀儡</a></div>
+                            <div class="card-meta"><span>柒捌动漫社</span> • <span>2025-06-25 16:55</span></div>
+                            
+                            <div class="meta-grid"><div class="meta-item"><span>时长:</span>08:42</div><div class="meta-item"><span>播放:</span>187</div><div class="meta-item"><span>收藏:</span>2</div><div class="meta-item"><span>弹幕:</span>0</div><div class="meta-item"><span>评论:</span>0</div></div><div class="card-extra-meta"><span class="category-tag">火影忍者</span><span class="category-tag">宇智波佐助</span><span class="category-tag">漩涡鸣人</span><span class="category-tag">动画综合</span></div>
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-thumbnail"><a href="http://www.bilibili.com/video/av114743155104854" target="_blank" rel="noopener noreferrer"><img src="http://i2.hdslb.com/bfs/archive/ce5de81000eb1171d3cad226e54fd38cac5bcbee.jpg" alt="Thumbnail"></a></div>
+                        <div class="card-content">
+                            <div class="card-title"><a href="http://www.bilibili.com/video/av114743155104854" target="_blank" rel="noopener noreferrer">宇智波彻底复活，弹指间秒杀鸣佐，数秒内封印九大尾兽晋升六道级</a></div>
+                            <div class="card-meta"><span>柒捌动漫社</span> • <span>2025-06-25 16:55</span></div>
+                            
+                            <div class="meta-grid"><div class="meta-item"><span>时长:</span>16:33</div><div class="meta-item"><span>播放:</span>6939</div><div class="meta-item"><span>收藏:</span>16</div><div class="meta-item"><span>弹幕:</span>7</div><div class="meta-item"><span>评论:</span>2</div></div><div class="card-extra-meta"><span class="category-tag">火影忍者</span><span class="category-tag">宇智波佐助</span><span class="category-tag">漩涡鸣人</span><span class="category-tag">动画综合</span></div>
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-thumbnail"><a href="http://www.bilibili.com/video/av114739363450978" target="_blank" rel="noopener noreferrer"><img src="http://i1.hdslb.com/bfs/archive/1d98e3d6c655935891184746640dd74aa06bf8b2.jpg" alt="Thumbnail"></a></div>
+                        <div class="card-content">
+                            <div class="card-title"><a href="http://www.bilibili.com/video/av114739363450978" target="_blank" rel="noopener noreferrer">【鸣佐】死別</a></div>
+                            <div class="card-meta"><span>---恍恍---</span> • <span>2025-06-25 00:51</span></div>
+                            
+                            <div class="meta-grid"><div class="meta-item"><span>时长:</span>00:45</div><div class="meta-item"><span>播放:</span>587</div><div class="meta-item"><span>收藏:</span>29</div><div class="meta-item"><span>弹幕:</span>0</div><div class="meta-item"><span>评论:</span>19</div></div><div class="card-extra-meta"><span class="category-tag">火影忍者</span><span class="category-tag">鸣佐</span><span class="category-tag">同人·手书</span></div>
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-thumbnail"><a href="http://www.bilibili.com/video/av114739179030245" target="_blank" rel="noopener noreferrer"><img src="http://i2.hdslb.com/bfs/archive/5a98a41b1011cdb47c312461492077ea796132dd.jpg" alt="Thumbnail"></a></div>
+                        <div class="card-content">
+                            <div class="card-title"><a href="http://www.bilibili.com/video/av114739179030245" target="_blank" rel="noopener noreferrer">《异次元回战》桃红篇（暮色）</a></div>
+                            <div class="card-meta"><span>白日梦紫酱</span> • <span>2025-06-25 00:06</span></div>
+                            
+                            <div class="meta-grid"><div class="meta-item"><span>时长:</span>01:02</div><div class="meta-item"><span>播放:</span>848</div><div class="meta-item"><span>收藏:</span>24</div><div class="meta-item"><span>弹幕:</span>0</div><div class="meta-item"><span>评论:</span>13</div></div><div class="card-extra-meta"><span class="category-tag">龙珠</span><span class="category-tag">火影忍者</span><span class="category-tag">海贼王</span><span class="category-tag">战斗</span><span class="category-tag">卡卡罗特</span><span class="category-tag">鸣佐</span><span class="category-tag">动画短片</span><span class="category-tag">异次元</span><span class="category-tag">咒术回战</span><span class="category-tag">动画种草激励计划</span><span class="category-tag">六月动画种草激励</span><span class="category-tag">动画综合</span></div>
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-thumbnail"><a href="http://www.bilibili.com/video/av114737769681084" target="_blank" rel="noopener noreferrer"><img src="http://i1.hdslb.com/bfs/archive/e74463065b3ddcd4dff2dc2f72d4a8d877f4ac61.jpg" alt="Thumbnail"></a></div>
+                        <div class="card-content">
+                            <div class="card-title"><a href="http://www.bilibili.com/video/av114737769681084" target="_blank" rel="noopener noreferrer">小佐被重男包围的一生</a></div>
+                            <div class="card-meta"><span>-keylin</span> • <span>2025-06-24 18:07</span></div>
+                            
+                            <div class="meta-grid"><div class="meta-item"><span>时长:</span>00:23</div><div class="meta-item"><span>播放:</span>2182</div><div class="meta-item"><span>收藏:</span>71</div><div class="meta-item"><span>弹幕:</span>1</div><div class="meta-item"><span>评论:</span>8</div></div><div class="card-extra-meta"><span class="category-tag">火影忍者</span><span class="category-tag">鸣佐</span><span class="category-tag">鼬佐</span><span class="category-tag">all佐</span><span class="category-tag">自行避雷</span><span class="category-tag">波骨</span><span class="category-tag">佐嬷</span><span class="category-tag">动画综合</span></div>
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-thumbnail"><a href="http://www.bilibili.com/video/av114737702637722" target="_blank" rel="noopener noreferrer"><img src="http://i0.hdslb.com/bfs/archive/f1211c051007032f947fd0d3098b7c2d847c5456.jpg" alt="Thumbnail"></a></div>
+                        <div class="card-content">
+                            <div class="card-title"><a href="http://www.bilibili.com/video/av114737702637722" target="_blank" rel="noopener noreferrer">鸣佐vs大筒木辉夜（上），斑爷变女人，查克拉之祖复活</a></div>
+                            <div class="card-meta"><span>柒捌动漫社</span> • <span>2025-06-24 17:49</span></div>
+                            
+                            <div class="meta-grid"><div class="meta-item"><span>时长:</span>15:13</div><div class="meta-item"><span>播放:</span>166</div><div class="meta-item"><span>收藏:</span>1</div><div class="meta-item"><span>弹幕:</span>0</div><div class="meta-item"><span>评论:</span>0</div></div><div class="card-extra-meta"><span class="category-tag">宇智波佐助</span><span class="category-tag">宇智波斑</span><span class="category-tag">漩涡鸣人</span><span class="category-tag">动画综合</span></div>
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-thumbnail"><a href="http://www.bilibili.com/video/av114737702510482" target="_blank" rel="noopener noreferrer"><img src="http://i1.hdslb.com/bfs/archive/e93729eeee866334958542d5894fc75cabbd1b1f.jpg" alt="Thumbnail"></a></div>
+                        <div class="card-content">
+                            <div class="card-title"><a href="http://www.bilibili.com/video/av114737702510482" target="_blank" rel="noopener noreferrer">鸣佐vs大筒木辉夜（下），花1000年复活，结果一夜大战就被封印</a></div>
+                            <div class="card-meta"><span>柒捌动漫社</span> • <span>2025-06-24 17:49</span></div>
+                            
+                            <div class="meta-grid"><div class="meta-item"><span>时长:</span>20:01</div><div class="meta-item"><span>播放:</span>74</div><div class="meta-item"><span>收藏:</span>0</div><div class="meta-item"><span>弹幕:</span>0</div><div class="meta-item"><span>评论:</span>0</div></div><div class="card-extra-meta"><span class="category-tag">火影忍者</span><span class="category-tag">宇智波佐助</span><span class="category-tag">漩涡鸣人</span><span class="category-tag">动画综合</span></div>
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-thumbnail"><a href="http://www.bilibili.com/video/av114737635397825" target="_blank" rel="noopener noreferrer"><img src="http://i1.hdslb.com/bfs/archive/e65b60f4d3cd50c9ea812b7979cf61cc13db6ce4.jpg" alt="Thumbnail"></a></div>
+                        <div class="card-content">
+                            <div class="card-title"><a href="http://www.bilibili.com/video/av114737635397825" target="_blank" rel="noopener noreferrer">六道鸣佐vs六道斑，双眼轮回眼的斑有多强？</a></div>
+                            <div class="card-meta"><span>柒捌动漫社</span> • <span>2025-06-24 17:33</span></div>
+                            
+                            <div class="meta-grid"><div class="meta-item"><span>时长:</span>20:05</div><div class="meta-item"><span>播放:</span>3383</div><div class="meta-item"><span>收藏:</span>15</div><div class="meta-item"><span>弹幕:</span>4</div><div class="meta-item"><span>评论:</span>16</div></div><div class="card-extra-meta"><span class="category-tag">宇智波佐助</span><span class="category-tag">宇智波斑</span><span class="category-tag">漩涡鸣人</span><span class="category-tag">动画综合</span></div>
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-thumbnail"><a href="http://www.bilibili.com/video/av114737601907876" target="_blank" rel="noopener noreferrer"><img src="http://i2.hdslb.com/bfs/archive/1b85819e672342a31237bb8d297a91e78d009a79.jpg" alt="Thumbnail"></a></div>
+                        <div class="card-content">
+                            <div class="card-title"><a href="http://www.bilibili.com/video/av114737601907876" target="_blank" rel="noopener noreferrer">手绘权威夫妇</a></div>
+                            <div class="card-meta"><span>桃叽夭夭よ</span> • <span>2025-06-24 17:25</span></div>
+                            
+                            <div class="meta-grid"><div class="meta-item"><span>时长:</span>00:28</div><div class="meta-item"><span>播放:</span>448</div><div class="meta-item"><span>收藏:</span>10</div><div class="meta-item"><span>弹幕:</span>0</div><div class="meta-item"><span>评论:</span>3</div></div><div class="card-extra-meta"><span class="category-tag">爱情</span><span class="category-tag">绘画</span><span class="category-tag">火影忍者</span><span class="category-tag">鸣佐</span><span class="category-tag">佐鸣</span><span class="category-tag">佐助</span><span class="category-tag">鸣人</span><span class="category-tag">致歉一切</span><span class="category-tag">贴脸4000+</span><span class="category-tag">画师百日创作挑战</span><span class="category-tag">同人·手书</span></div>
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-thumbnail"><a href="http://www.bilibili.com/video/av114737501180612" target="_blank" rel="noopener noreferrer"><img src="http://i0.hdslb.com/bfs/archive/f42c2402517a9082215ba22ec86afe0c90165e0d.jpg" alt="Thumbnail"></a></div>
+                        <div class="card-content">
+                            <div class="card-title"><a href="http://www.bilibili.com/video/av114737501180612" target="_blank" rel="noopener noreferrer">鸣佐史诗级大战最后的结局，佐助终于承认自己输了</a></div>
+                            <div class="card-meta"><span>柒捌动漫社</span> • <span>2025-06-24 16:59</span></div>
+                            
+                            <div class="meta-grid"><div class="meta-item"><span>时长:</span>16:23</div><div class="meta-item"><span>播放:</span>656</div><div class="meta-item"><span>收藏:</span>4</div><div class="meta-item"><span>弹幕:</span>0</div><div class="meta-item"><span>评论:</span>0</div></div><div class="card-extra-meta"><span class="category-tag">火影忍者</span><span class="category-tag">宇智波佐助</span><span class="category-tag">漩涡鸣人</span><span class="category-tag">动画综合</span></div>
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-thumbnail"><a href="http://www.bilibili.com/video/av114733222989400" target="_blank" rel="noopener noreferrer"><img src="http://i2.hdslb.com/bfs/archive/c6d73e6c3c92851721fb471d61f82c5921796d98.jpg" alt="Thumbnail"></a></div>
+                        <div class="card-content">
+                            <div class="card-title"><a href="http://www.bilibili.com/video/av114733222989400" target="_blank" rel="noopener noreferrer">鸣佐谁的智商最高呢</a></div>
+                            <div class="card-meta"><span>笑笑动漫解说a</span> • <span>2025-06-23 22:51</span></div>
+                            
+                            <div class="meta-grid"><div class="meta-item"><span>时长:</span>03:29</div><div class="meta-item"><span>播放:</span>196176</div><div class="meta-item"><span>收藏:</span>649</div><div class="meta-item"><span>弹幕:</span>0</div><div class="meta-item"><span>评论:</span>2</div></div><div class="card-extra-meta"><span class="category-tag">火影忍者</span><span class="category-tag">宇智波佐助</span><span class="category-tag">漩涡鸣人</span><span class="category-tag">二次元副本挑战者</span><span class="category-tag">二次元副本大作战3.0</span><span class="category-tag">动漫杂谈</span></div>
+                            
+                        </div>
+                    </div>
+                    
+                </div>
+                
+                <div id="tab-5" class="tab-panel">
+                    
+                    <div class="card">
+                        
+                        <div class="card-content">
+                            <div class="card-title"><a href="https://weibo.com/7675834729/PyDR247OG" target="_blank" rel="noopener noreferrer">#佐鸣# 萌😍 - 转发 @周末你可以吃番茄拉面:&ensp;598测报带图【请吃娘佐鸣子】[跪了] [图片]</a></div>
+                            <div class="card-meta"><span>雨水替我亲吻你的额头</span> • <span>2025-06-28 17:28</span></div>
+                            <div class="card-summary">#佐鸣# 萌😍 - 转发 @周末你可以吃番茄拉面: 598测报带图【请吃娘佐鸣子】</div>
+                            
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        
+                        <div class="card-content">
+                            <div class="card-title"><a href="https://weibo.com/7745921073/PyDNQp8E0" target="_blank" rel="noopener noreferrer">佐鸣 啥也不说了 小情侣99 [图片][图片][图片][图片][图片][图片][图片][图片][图片]</a></div>
+                            <div class="card-meta"><span>闯出祺迹</span> • <span>2025-06-28 17:20</span></div>
+                            <div class="card-summary">佐鸣 啥也不说了 小情侣99</div>
+                            
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        
+                        <div class="card-content">
+                            <div class="card-title"><a href="https://weibo.com/7745921073/PyDNOdlGG" target="_blank" rel="noopener noreferrer">佐鸣 啥也不说了 小情侣99 [图片][图片][图片][图片][图片][图片][图片][图片][图片]</a></div>
+                            <div class="card-meta"><span>闯出祺迹</span> • <span>2025-06-28 17:20</span></div>
+                            <div class="card-summary">佐鸣 啥也不说了 小情侣99</div>
+                            
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        
+                        <div class="card-content">
+                            <div class="card-title"><a href="https://weibo.com/7778881024/PyDxZfKWA" target="_blank" rel="noopener noreferrer">佐鸣#佐鸣永远热恋# 🐱🦊 有点暗 就这样看看吧。佐助画的实在不太萌 真的抱歉。我不太会画。 [图片][图片][图片][图片]</a></div>
+                            <div class="card-meta"><span>佐天遇见鸣</span> • <span>2025-06-28 16:41</span></div>
+                            <div class="card-summary">佐鸣#佐鸣永远热恋# 🐱🦊 有点暗 就这样看看吧。佐助画的实在不太萌 真的抱歉。我不太会画。</div>
+                            
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        
+                        <div class="card-content">
+                            <div class="card-title"><a href="https://weibo.com/7314623100/PyDxnlTyc" target="_blank" rel="noopener noreferrer">佐鸣 366包邮 走鱼不包手续费 荆州 [图片]</a></div>
+                            <div class="card-meta"><span>汀汀_回</span> • <span>2025-06-28 16:39</span></div>
+                            <div class="card-summary">佐鸣 366包邮 走鱼不包手续费 荆州</div>
+                            
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        
+                        <div class="card-content">
+                            <div class="card-title"><a href="https://weibo.com/3269136125/PyDl3nk5e" target="_blank" rel="noopener noreferrer">佐鸣 好玩[开学季][开学季][开学季] [图片][图片]</a></div>
+                            <div class="card-meta"><span>郁焖sm</span> • <span>2025-06-28 16:09</span></div>
+                            <div class="card-summary">佐鸣 好玩</div>
+                            
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        
+                        <div class="card-content">
+                            <div class="card-title"><a href="https://weibo.com/7401606927/PyDit5aHD" target="_blank" rel="noopener noreferrer">佐鸣 临摹的画，图二是在小红书上面找的，图一只是草稿[允悲]还没弄完 [图片] [Live Photo]</a></div>
+                            <div class="card-meta"><span>墨韵1085</span> • <span>2025-06-28 16:03</span></div>
+                            <div class="card-summary">佐鸣 临摹的画，图二是在小红书上面找的，图一只是草稿还没弄完</div>
+                            
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        
+                        <div class="card-content">
+                            <div class="card-title"><a href="https://weibo.com/7982195792/PyD773ult" target="_blank" rel="noopener noreferrer">佐鸣宝贝们很帅哦[抱一抱]#佐鸣# - 转发 @佐鸣ONLY主页:&ensp;佐鸣#佐鸣# 『火影忍者*东京塔』新图绘 [图片][图片][图片][图片]</a></div>
+                            <div class="card-meta"><span>产世一</span> • <span>2025-06-28 15:35</span></div>
+                            <div class="card-summary">佐鸣宝贝们很帅哦#佐鸣# - 转发 @佐鸣ONLY主页: 佐鸣#佐鸣# 『火影忍者*东京塔』新图绘</div>
+                            
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        
+                        <div class="card-content">
+                            <div class="card-title"><a href="https://weibo.com/7785492277/PyD2uzBjR" target="_blank" rel="noopener noreferrer">佐鸣 神不磕佐鸣我磕佐鸣 我第一次剪视频不要骂窝[爱你][爱你] 又在给妹子卖萌的微博视频</a></div>
+                            <div class="card-meta"><span>又在给妹子卖萌</span> • <span>2025-06-28 15:23</span></div>
+                            <div class="card-summary">佐鸣 神不磕佐鸣我磕佐鸣 我第一次剪视频不要骂窝 又在给妹子卖萌的微博视频</div>
+                            
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        
+                        <div class="card-content">
+                            <div class="card-title"><a href="https://weibo.com/7900350882/PyCBaj3OV" target="_blank" rel="noopener noreferrer">佐鸣 求 tt[羞嗒嗒] [图片]</a></div>
+                            <div class="card-meta"><span>陆淮言</span> • <span>2025-06-28 14:16</span></div>
+                            <div class="card-summary">佐鸣 求 tt</div>
+                            
+                            
+                        </div>
+                    </div>
+                    
+                </div>
+                
+                <div id="tab-6" class="tab-panel">
+                    
+                    <div class="card">
+                        
+                        <div class="card-content">
+                            <div class="card-title"><a href="https://weibo.com/6391181915/PyAoXqXrn" target="_blank" rel="noopener noreferrer">鸣佐 鸣人以为的对佐助的爱。——兄弟，大概就是这种感觉吧——可能把你当朋友，只是我的一厢情愿——你是我好不容易得来的重要羁绊鸣人实际的对佐助的爱。——...</a></div>
+                            <div class="card-meta"><span>还是叫柯一</span> • <span>2025-06-28 08:40</span></div>
+                            <div class="card-summary">鸣佐 鸣人以为的对佐助的爱。——兄弟，大概就是这种感觉吧——可能把你当朋友，只是我的一厢情愿——你是我好不容易得来的重要羁绊鸣人实际的对佐助的爱。——死后也想与你互相理解——要死一起死（绝对不会被你杀死，但你死我也不会独活）——你痛我痛鸣人最后知不知道自己对佐助 ...</div>
+                            
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        
+                        <div class="card-content">
+                            <div class="card-title"><a href="https://weibo.com/7833539219/PyzOtuKWM" target="_blank" rel="noopener noreferrer">鸣佐 老师们，谁有剪刀手七代目的文包嘛，找了好久都找不到，求求[泪][泪][泪]</a></div>
+                            <div class="card-meta"><span>勇战勇战你们有点暧昧了</span> • <span>2025-06-28 07:11</span></div>
+                            <div class="card-summary">鸣佐 老师们，谁有剪刀手七代目的文包嘛，找了好久都找不到，求求</div>
+                            
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        
+                        <div class="card-content">
+                            <div class="card-title"><a href="https://weibo.com/7394992983/PyxXb8h1W" target="_blank" rel="noopener noreferrer">鸣佐 猫猫降临❤️我真的屯不住来发了orz（你这） [图片][图片]</a></div>
+                            <div class="card-meta"><span>烩鸽鸽</span> • <span>2025-06-28 02:27</span></div>
+                            <div class="card-summary">鸣佐 猫猫降临❤️我真的屯不住来发了orz（你这）</div>
+                            
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        
+                        <div class="card-content">
+                            <div class="card-title"><a href="https://weibo.com/7877354502/Pyxb32iRP" target="_blank" rel="noopener noreferrer">鸣佐 吊车尾如是说 短打日常，想过他们俩要是是大学生的生活，算是一个前世今生，佐助做的梦是前世的梦，鸣人会突然会对佐助说爱吧，因为佐助需要，他也想嗯嗯嗯...</a></div>
+                            <div class="card-meta"><span>痛苦瀰漫</span> • <span>2025-06-28 00:28</span></div>
+                            <div class="card-summary">鸣佐 吊车尾如是说 短打日常，想过他们俩要是是大学生的生活，算是一个前世今生，佐助做的梦是前世的梦，鸣人会突然会对佐助说爱吧，因为佐助需要，他也想嗯嗯嗯…不要喷不要喷</div>
+                            
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        
+                        <div class="card-content">
+                            <div class="card-title"><a href="https://weibo.com/7851966680/Pyx2Xd4DS" target="_blank" rel="noopener noreferrer">鸣佐 早安 鸣佐[鼓掌] [图片][图片]</a></div>
+                            <div class="card-meta"><span>芹少QinShao</span> • <span>2025-06-28 00:08</span></div>
+                            <div class="card-summary">鸣佐 早安 鸣佐</div>
+                            
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        
+                        <div class="card-content">
+                            <div class="card-title"><a href="https://weibo.com/7550531420/PyvCifaVE" target="_blank" rel="noopener noreferrer">鸣佐 #鸣佐# 还是女孩[我走了] [图片][图片]</a></div>
+                            <div class="card-meta"><span>w黑毛大王w_</span> • <span>2025-06-27 20:30</span></div>
+                            <div class="card-summary">鸣佐 #鸣佐# 还是女孩</div>
+                            
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        
+                        <div class="card-content">
+                            <div class="card-title"><a href="https://weibo.com/7774860712/PyvbVtNBp" target="_blank" rel="noopener noreferrer">超话粉丝大咖</a></div>
+                            <div class="card-meta"><span>凉乞钞0918</span> • <span>2025-06-27 19:25</span></div>
+                            <div class="card-summary">超话粉丝大咖</div>
+                            
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        
+                        <div class="card-content">
+                            <div class="card-title"><a href="https://weibo.com/7796555796/PyvaaycPt" target="_blank" rel="noopener noreferrer">鸣佐 【ナルサス & 앙착맨】🤝🍥🍅💘#鸣佐# twi:guinea_no_akuma [图片]</a></div>
+                            <div class="card-meta"><span>五大国周刊文春73号特刊</span> • <span>2025-06-27 19:20</span></div>
+                            <div class="card-summary">鸣佐 【ナルサス & 앙착맨】🤝🍥🍅💘#鸣佐# twi:guinea_no_akuma</div>
+                            
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        
+                        <div class="card-content">
+                            <div class="card-title"><a href="https://weibo.com/7708656652/PytvVFy3J" target="_blank" rel="noopener noreferrer">鸣佐 出出同人本，除了今夜雨，其余原价-10包邮，会塞很多小礼物《抵达》《解药》《今夜雨》《日月的礼物》 [图片]</a></div>
+                            <div class="card-meta"><span>宇智剥柚ns</span> • <span>2025-06-27 15:08</span></div>
+                            <div class="card-summary">鸣佐 出出同人本，除了今夜雨，其余原价-10包邮，会塞很多小礼物《抵达》《解药》《今夜雨》《日月的礼物》</div>
+                            
+                            
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        
+                        <div class="card-content">
+                            <div class="card-title"><a href="https://weibo.com/6468241805/PytjBx4aJ" target="_blank" rel="noopener noreferrer">鸣佐 小学鸡你们好可爱👄可以自印 [图片][图片]</a></div>
+                            <div class="card-meta"><span>Seeyouinthesnow</span> • <span>2025-06-27 14:38</span></div>
+                            <div class="card-summary">鸣佐 小学鸡你们好可爱👄可以自印</div>
+                            
+                            
+                        </div>
+                    </div>
+                    
+                </div>
+                
+            </div>
+        
+    </div>
+    
+    <script>
+        // JS部分完全不需要改动
+        document.addEventListener('DOMContentLoaded', function() {
+            const skyContainer = document.getElementById('sky-container');
+            const screenArea = window.innerWidth * window.innerHeight;
+            const starCount = Math.floor(screenArea / 12000);
+            for (let i = 0; i < starCount; i++) {
+                const star = document.createElement('div');
+                star.className = 'star';
+                const size = Math.random() * 2 + 0.5;
+                star.style.width = `${size}px`;
+                star.style.height = `${size}px`;
+                star.style.top = `${Math.random() * 100}%`;
+                star.style.left = `${Math.random() * 100}%`;
+                star.style.animationDuration = `${Math.random() * 4 + 3}s`;
+                star.style.animationDelay = `${Math.random() * 5}s`;
+                skyContainer.appendChild(star);
+            }
+            const tabButtons = document.querySelectorAll('.tab-button');
+            const tabPanels = document.querySelectorAll('.tab-panel');
+            if (tabButtons.length > 0) {
+                tabButtons[0].classList.add('active');
+                if(tabPanels.length > 0) tabPanels[0].classList.add('active');
+            }
+            tabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    tabButtons.forEach(btn => btn.classList.remove('active'));
+                    tabPanels.forEach(panel => panel.classList.remove('active'));
+                    button.classList.add('active');
+                    const targetPanel = document.querySelector(button.dataset.target);
+                    if (targetPanel) {
+                        targetPanel.classList.add('active');
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
