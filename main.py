@@ -10,17 +10,16 @@ from operator import itemgetter
 import re
 
 # --- 配置区 ---
-RSSHUB_SERVER = 'https://rsshub.rss.tips'
+# 如果在GitHub Actions环境中，RSSHUB服务器地址可以留空，因为它不需要代理
+# 如果在本地测试，可以填入你的RSSHUB地址
+RSSHUB_SERVER = os.environ.get('RSSHUB_SERVER', '') # 优先从环境变量读取
 RSS_FEEDS = {
     'AO3 | 佐鸣佐': 'https://archiveofourown.org/tags/14303/feed.atom',
-    'B站 | 佐助': f'{RSSHUB_SERVER}/bilibili/vsearch/佐助/pubdate/0/1',
-    'B站 | 鸣佐': f'{RSSHUB_SERVER}/bilibili/vsearch/鸣佐/pubdate/0/1',
-    'B站 | 佐鸣': f'{RSSHUB_SERVER}/bilibili/vsearch/佐鸣/pubdate/0/1',
-    '微博超话 | 佐鸣': 'https://rsshub.rss.tips/weibo/super_index/10080800f63e66b38b96a8ca5ecb2e0b3cfae4/sort_time',
-    '微博超话 | 鸣佐': 'https://rsshub.rss.tips/weibo/super_index/100808799b9b6da0d5d6d2f398c771b28b4039/sort_time',
-    #'LOFTER | 佐助': f'{RSSHUB_SERVER}/lofter/tag/佐助',
-    #'LOFTER | 鸣佐': f'{RSSHUB_SERVER}/lofter/tag/鸣佐',
-    #'LOFTER | 佐鸣': f'{RSSHUB_SERVER}/lofter/tag/佐鸣',
+    'B站 | 佐助': f'{RSSHUB_SERVER}/bilibili/vsearch/佐助/pubdate/0/1' if RSSHUB_SERVER else 'https://rsshub.app/bilibili/vsearch/佐助/pubdate/0/1',
+    'B站 | 鸣佐': f'{RSSHUB_SERVER}/bilibili/vsearch/鸣佐/pubdate/0/1' if RSSHUB_SERVER else 'https://rsshub.app/bilibili/vsearch/鸣佐/pubdate/0/1',
+    'B站 | 佐鸣': f'{RSSHUB_SERVER}/bilibili/vsearch/佐鸣/pubdate/0/1' if RSSHUB_SERVER else 'https://rsshub.app/bilibili/vsearch/佐鸣/pubdate/0/1',
+    '微博超话 | 佐鸣': 'https://rsshub.app/weibo/super_index/10080800f63e66b38b96a8ca5ecb2e0b3cfae4/sort_time',
+    '微博超话 | 鸣佐': 'https://rsshub.app/weibo/super_index/100808799b9b6da0d5d6d2f398c771b28b4039/sort_time',
 }
 MAX_ENTRIES_PER_SOURCE = 20
 
@@ -42,10 +41,13 @@ AO3_WARNING_TRANSLATIONS = {
     "Underage Sex": "未成年性行为"
 }
 
-# ... setup_proxy() 函数保持不变 ...
 def setup_proxy():
-    proxy_address = 'http://127.0.0.1:7890'
-    if not proxy_address: return
+    proxy_address = os.environ.get('HTTP_PROXY')
+    if not proxy_address: 
+        print("💡 未检测到代理设置，将直接连接。")
+        return
+    
+    print(f"🔧 检测到代理地址，正在配置: {proxy_address}")
     proxy_handler = urllib.request.ProxyHandler({'http': proxy_address, 'https': proxy_address})
     opener = urllib.request.build_opener(proxy_handler)
     urllib.request.install_opener(opener)
@@ -53,7 +55,7 @@ def setup_proxy():
 def fetch_all_feeds():
     all_entries = []
     print("🛰️ 开始追踪月亮轨迹...")
-    setup_proxy()
+    
     for name, url in RSS_FEEDS.items():
         print(f"\n----- 正在检查源: {name} -----")
         try:
@@ -104,7 +106,6 @@ def fetch_all_feeds():
                     translated_warning = AO3_WARNING_TRANSLATIONS.get(original_warning, original_warning)
 
                     ao3_meta = {
-                        # --- 修复点：在这里补上了缺失的结尾单引号 ---
                         'words': (re.search(r'Words:\s*([\d,]+)', summary_html) or ['-','-'])[1],
                         'chapters': (re.search(r'Chapters:\s*([\d/]+)', summary_html) or ['-','-'])[1],
                         'rating': translated_rating,
@@ -134,24 +135,30 @@ def fetch_all_feeds():
     print(f"\n✅ 追踪完成，共找到 {len(all_entries)} 条有效记录。")
     return all_entries
 
-# ... generate_html() 和 __main__ 部分完全不变 ...
 def generate_html(entries):
     print("🎨 正在生成观测报告 (HTML)...")
     grouped_entries = {}
     entries.sort(key=itemgetter('source'))
     for source_name, group in groupby(entries, key=itemgetter('source')):
         grouped_entries[source_name] = sorted(list(group), key=lambda x: x['published'] or datetime.min.replace(tzinfo=pytz.utc), reverse=True)
+    
     env = Environment(loader=FileSystemLoader('.'))
     template = env.get_template('template.html')
     update_time = datetime.now(pytz.timezone('Asia/Shanghai')).strftime('%Y-%m-%d %H:%M:%S')
+    
+    # 保持网页标题和Slogan为英文原文，严格遵守您的要求
     html_content = template.render(grouped_entries=grouped_entries, update_time=update_time, site_title="Lunar Orbit Observatory", site_slogan="Tracing the Path of the Moon.")
-    output_dir = "dist"
-    if not os.path.exists(output_dir): os.makedirs(output_dir)
-    with open(os.path.join(output_dir, 'index.html'), 'w', encoding='utf-8') as f:
-        f.write(html_content)
-    print(f"✅ 报告生成完毕: {os.path.join(output_dir, 'index.html')}")
+    
+    return html_content
 
 if __name__ == "__main__":
     entries = fetch_all_feeds()
-    generate_html(entries)
+    output_content = generate_html(entries)
+    
+    output_file_path = "index.html"
+    with open(output_file_path, "w", encoding="utf-8") as f:
+        f.write(output_content)
+    
+    # 仅汉化终端打印信息
+    print(f"✅ 观测报告生成完毕，已保存为 {output_file_path}。")
 
