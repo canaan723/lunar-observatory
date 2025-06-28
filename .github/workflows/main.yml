@@ -1,0 +1,57 @@
+name: Build and Deploy Website
+
+on:
+  # 1. 允许在GitHub页面上手动触发
+  workflow_dispatch:
+
+  # 2. 当有代码推送到main分支时触发 (比如我们手动修改配置后)
+  push:
+    branches:
+      - main
+
+  # 3. 定时触发，使用UTC时间，'0 */6 * * *' 表示每6小时运行一次
+  schedule:
+    - cron: '0 */6 * * *'
+
+permissions:
+  contents: write # 允许actions修改仓库内容（最重要的是提交index.html）
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      # 第一步：获取仓库代码
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 第二步：设置Python环境
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # 第三步：安装依赖包
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          # 直接安装我们目前需要的包，避免忘记更新requirements.txt
+          pip install beautifulsoup4 requests PyYAML Jinja2
+
+      # 第四步：运行主脚本，生成index.html
+      - name: Run script to generate index.html
+        run: python main.py
+
+      # 第五步：将新生成的index.html提交回仓库
+      - name: Commit and push index.html
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          # 使用git status检查是否有变动，如果有，再提交
+          if ! git status | grep -q "nothing to commit"; then
+            git commit -m "Update index.html with latest data"
+            git push
+          else
+            echo "No changes to commit."
+          fi
