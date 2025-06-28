@@ -1,19 +1,11 @@
 name: Build and Deploy Website
 
 on:
-  # 允许手动触发
   workflow_dispatch:
-
-  # 当代码推送到main分支时触发
   push:
     branches:
       - main
-
-  # 定时触发
   schedule:
-    # cron表达式 '0 */6 * * *' 表示：
-    # 分钟为0，小时为每6小时一次 (0, 6, 12, 18点)，日期、月份、星期不限
-    # 注意：这是UTC时间，比北京时间晚8小时。
     - cron: '0 */6 * * *'
 
 permissions:
@@ -31,14 +23,21 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install ALL dependencies # 安装所有依赖
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          # 这里包含了我们目前代码所需的所有库，一次性解决问题！
           pip install beautifulsoup4 requests PyYAML Jinja2 feedparser pytz
 
-      - name: Run script to generate index.html
+      # --- 调试步骤开始 ---
+      - name: 1. List files before running script # 1. 运行前，查看目录下有哪些文件
+        run: ls -la
+
+      - name: 2. Run script to generate index.html # 2. 运行我们的Python脚本
         run: python main.py
+
+      - name: 3. List files after running script # 3. 运行后，再次查看目录下有哪些文件
+        run: ls -la
+      # --- 调试步骤结束 ---
 
       - name: Commit and push index.html
         run: |
